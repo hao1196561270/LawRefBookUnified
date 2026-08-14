@@ -63,11 +63,19 @@ private const val HAPTIC_DURATION_MS = 30L
 private const val HAPTIC_AMPLITUDE = 45
 
 /**
+ * 放大镜相对手指的上浮距离（dp）。
+ * 官方放大镜把「手指下方内容」渲染在镜片底边锚点处，会被手指本身遮挡；
+ * 把镜片整体上浮「半行高 + 本值」，使手指处内容清晰悬浮于手指上方可见。
+ * 注意 loupePos 是元素局部坐标（值较小），上浮后需下限夹紧，避免镜片飞出文本顶部。
+ */
+private const val MAGNIFIER_FLOAT_UP_DP = 40f
+
+/**
  * 可在正文中长按选择的文本组件。
  *
  * 交互约定：
  * - 在文本上按住超过 [SELECT_LONG_PRESS_MS]（且未触发滚动）即进入选区模式；
- *   若未拖动，则以「长按位置所在句子」作为初始选区（保证有内容可操作）；
+ *   初选仅高亮**手指处的一个字符**，之后拖动再从该锚点扩展选区；
  * - 进入选区后，手指/指针继续移动会动态扩展选区的结束边界（含反向拖动）；
  * - 高亮以半透明色块覆盖选中字符范围，并在起、止字符处绘制对称边界手柄：左侧圆点贴顶部原点正下方并向下延伸竖线、右侧圆点贴底部并向上延伸竖线，两者镜像对应；
  * - **拖动手柄**：按下时若命中某个边界圆点，则进入「调整该端点」模式，仅移动对应端点、
@@ -244,8 +252,10 @@ fun SelectableText(
                                         if (change.uptimeMillis - downTime >= SELECT_LONG_PRESS_MS) {
                                             dragAnchor = lay.getOffsetForPosition(pressPos).coerceIn(0, text.length)
                                             activated = true
-                                            // 不拖动也给出「所在句子」内容，保证菜单有可用文本
-                                            selection = sentenceRange(text, dragAnchor)
+                                            // 初选仅高亮手指处的一个字符（光标语义 [start, end)）；
+                                            // 后续拖动再从该锚点扩展选区。
+                                            val anchor = dragAnchor.coerceIn(0, (text.length - 1).coerceAtLeast(0))
+                                            selection = IntRange(anchor, (anchor + 1).coerceAtMost(text.length))
                                             change.consume()
                                             // 触觉反馈 + 显示放大镜（官方 magnifier 悬浮于手指上方并跟随）
                                             vibrateConfirm(context)
@@ -268,10 +278,26 @@ fun SelectableText(
                         }
                     }
                     // 官方放大镜：sourceCenter/magnifierCenter 均为元素局部坐标
-                    // （节点内部自动换算到屏幕），loupePos=Unspecified 时隐藏。
+                    // （节点内部自动换算到屏幕）。loupePos=Unspecified 时隐藏；
+                    // magnifierCenter 上浮「半行高 + MAGNIFIER_FLOAT_UP_DP」，
+                    // 让手指下方内容悬浮于手指上方可见（不被手指遮挡）。
                     .magnifier(
                         sourceCenter = { loupePos },
-                        magnifierCenter = { loupePos }
+                        magnifierCenter = {
+                            if (loupePos == Offset.Unspecified) {
+                                Offset.Unspecified
+                            } else {
+                                val layout = textLayout
+                                val lineH = layout?.let { it.getLineBottom(0) - it.getLineTop(0) } ?: 0f
+                                Offset(
+                                    x = loupePos.x,
+                                    // 上浮「半行高 + 40dp」，但下限夹紧在文本顶部内，
+                                    // 避免局部坐标减过头导致镜片被平台夹到屏幕顶端
+                                    y = (loupePos.y - lineH / 2f - MAGNIFIER_FLOAT_UP_DP * density)
+                                        .coerceAtLeast(lineH)
+                                )
+                            }
+                        }
                     )
             )
 
@@ -308,23 +334,6 @@ fun SelectableText(
             }
         }
     }
-}
-
-/**
- * 根据字符位置 [idx] 计算其所在句子范围（含结尾标点），返回 [IntRange]。
- * 范围采用「光标偏移」语义（last 为 exclusive-end），与高亮绘制、复制子串一致。
- * 若附近无终止标点（如纯条号或整段无标点），返回整段范围。
- */
-private fun sentenceRange(text: String, idx: Int): IntRange {
-    if (text.isEmpty()) return IntRange(0, 0)
-    val clamped = idx.coerceIn(0, text.length - 1)
-    val stops = setOf('。', '！', '？', '；', '：', '\n', '.', '!', '?', ';', ':')
-    var start = clamped
-    while (start > 0 && !stops.contains(text[start - 1])) start--
-    var end = clamped
-    while (end < text.length && !stops.contains(text[end])) end++
-    if (end < text.length) end++ // 包含终止符
-    return IntRange(start, end)
 }
 
 /**

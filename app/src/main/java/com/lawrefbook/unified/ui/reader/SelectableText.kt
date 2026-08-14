@@ -189,7 +189,8 @@ fun SelectableText(
                                         val startC = layout.getCursorRect(s)
                                         val endC = layout.getCursorRect(e)
                                         val dotR = HANDLE_DOT_RADIUS_DP * density
-                                        val hitR = maxOf(viewConfiguration.touchSlop, 22f * density)
+                                        // 命中区按官方 48dp 最小触控目标（半径 24dp）放大，便于点按
+                                        val hitR = maxOf(viewConfiguration.touchSlop, 24f * density)
                                         val leftDot = Offset(startC.left, startC.top + dotR)
                                         val rightDot = Offset(endC.left, endC.bottom - dotR)
                                         val dStart = (pressPos - leftDot).getDistance()

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>法条通 · LawRefBook 整合版 — UI 预览</title>
+<style>
+  :root{
+    --seed:#1565C0;
+    --font-scale:1;
+    --line-scale:1.6;
+    --char-scale:0;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,"PingFang SC",sans-serif;
+    background:#0d1117;color:#e6e6e6;display:flex;justify-content:center;align-items:flex-start;
+    padding:24px;gap:24px;flex-wrap:wrap;
+  }
+  .note{max-width:300px;font-size:13px;line-height:1.7;color:#9aa4b2;}
+  .note h1{font-size:18px;color:#fff;margin:0 0 8px;}
+  .note code{background:#1c2530;padding:1px 6px;border-radius:5px;color:#7fd1ff;font-size:12px;}
+  .note ul{padding-left:18px;margin:8px 0;}
+  .note li{margin:4px 0;}
+
+  /* phone */
+  .phone{
+    width:380px;height:780px;background:#000;border-radius:42px;padding:12px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 2px #2a2f37;position:relative;flex:none;
+  }
+  .screen-wrap{
+    width:100%;height:100%;border-radius:32px;overflow:hidden;position:relative;
+    background:var(--bg);display:flex;flex-direction:column;
+    transition:background .25s;
+  }
+  .statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;font-size:12px;color:var(--on-bg);opacity:.8;flex:none;}
+  .appbar{height:56px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    background:var(--surface);color:var(--on-surface);flex:none;box-shadow:0 1px 0 rgba(0,0,0,.06);}
+  .appbar .title{font-size:18px;font-weight:600;flex:1;}
+  .appbar .act{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:var(--on-surface);}
+  .appbar .act:hover{background:rgba(127,127,127,.15);}
+  .icon{width:22px;height:22px;display:inline-block;fill:currentColor;}
+
+  .scroll{flex:1;overflow-y:auto;padding:14px;color:var(--on-bg);}
+  .scroll::-webkit-scrollbar{width:0;}
+
+  .searchbox{display:flex;align-items:center;gap:8px;background:var(--surface-variant);
+    color:var(--on-surface-variant);border-radius:28px;padding:10px 16px;margin-bottom:14px;}
+  .searchbox input{flex:1;border:0;background:transparent;outline:none;color:var(--on-bg);font-size:14px;}
+
+  .section-title{font-size:13px;font-weight:600;color:var(--on-bg);opacity:.65;margin:6px 4px 10px;letter-spacing:.04em;}
+  .cat-list{display:flex;flex-direction:column;gap:8px;}
+  .cat-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;
+    background:var(--surface);color:var(--on-surface);cursor:pointer;border:1px solid var(--outline);}
+  .cat-item:hover{background:var(--surface-hover);}
+  .cat-ic{width:38px;height:38px;border-radius:10px;background:var(--seed-soft);color:var(--seed);
+    display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;}
+  .cat-name{flex:1;font-size:15px;}
+  .cat-count{font-size:12px;opacity:.55;}
+  .chev{opacity:.4;}
+
+  .law-item{padding:14px;border-radius:14px;background:var(--surface);color:var(--on-surface);
+    margin-bottom:9px;cursor:pointer;border:1px solid var(--outline);}
+  .law-item:hover{background:var(--surface-hover);}
+  .law-name{font-size:15px;font-weight:500;}
+  .law-sub{font-size:12px;opacity:.6;margin-top:3px;}
+
+  /* reader */
+  .reader-head{padding:4px 16px 0;}
+  .reader-meta{font-size:12px;opacity:.6;margin-bottom:10px;}
+  .toc-toggle{font-size:13px;color:var(--seed);cursor:pointer;font-weight:600;}
+  .article-card{background:var(--surface);border:1px solid var(--outline);border-radius:14px;
+    padding:14px 16px;margin-bottom:12px;color:var(--on-surface);}
+  .article-num{font-size:13px;font-weight:700;color:var(--seed);margin-bottom:6px;}
+  .article-body{font-size:calc(15px*var(--font-scale));line-height:calc(var(--line-scale));
+    letter-spacing:calc(0.01em*var(--char-scale));}
+  mark{background:var(--seed);color:#fff;padding:0 2px;border-radius:3px;}
+  .reader-actions{display:flex;gap:10px;margin:4px 0 14px;}
+  .pill{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;
+    background:var(--seed-soft);color:var(--seed);font-size:13px;cursor:pointer;font-weight:600;border:0;}
+  .pill.off{background:var(--surface-variant);color:var(--on-surface-variant);}
+
+  /* drawer */
+  .drawer{position:absolute;top:0;left:0;bottom:0;width:74%;background:var(--surface);
+    color:var(--on-surface);transform:translateX(-105%);transition:transform .25s;z-index:30;
+    box-shadow:0 0 40px rgba(0,0,0,.5);display:flex;flex-direction:column;}
+  .drawer.open{transform:translateX(0);}
+  .drawer h3{padding:18px 18px 6px;margin:0;font-size:16px;}
+  .drawer .close{position:absolute;top:14px;right:14px;cursor:pointer;opacity:.6;}
+  .toc-item{padding:11px 18px;font-size:14px;cursor:pointer;border-left:3px solid transparent;}
+  .toc-item:hover{background:var(--surface-hover);}
+  .toc-item.active{border-left-color:var(--seed);color:var(--seed);font-weight:600;background:var(--seed-soft);}
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:25;display:none;}
+  .scrim.show{display:block;}
+
+  /* settings */
+  .set-row{display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:12px;
+    background:var(--surface);margin-bottom:10px;border:1px solid var(--outline);color:var(--on-surface);}
+  .set-row .lbl{font-size:14px;}
+  .set-row .desc{font-size:12px;opacity:.55;margin-top:2px;}
+  .switch{width:46px;height:26px;border-radius:13px;background:var(--surface-variant);position:relative;cursor:pointer;transition:.2s;flex:none;}
+  .switch.on{background:var(--seed);}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;}
+  .switch.on::after{left:23px;}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;padding:6px 0;}
+  .chip{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;}
+  .chip.sel{border-color:var(--on-bg);}
+  .slider{width:100%;}
+  input[type=range]{accent-color:var(--seed);width:100%;}
+
+  /* bottom nav */
+  .bottomnav{height:64px;background:var(--surface);display:flex;border-top:1px solid var(--outline);flex:none;}
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-size:11px;color:var(--on-surface-variant);cursor:pointer;padding-top:6px;}
+  .bn-item.active{color:var(--seed);}
+  .bn-item .ic{width:24px;height:24px;fill:currentColor;}
+  .bn-badge{position:relative;}
+
+  .empty{text-align:center;opacity:.5;padding:50px 20px;font-size:14px;line-height:1.8;}
+  .tag{display:inline-block;font-size:11px;background:var(--seed-soft);color:var(--seed);padding:2px 9px;border-radius:10px;margin:2px 4px 2px 0;}
+
+  /* light/dark tokens via [data-theme] */
+  [data-theme="light"]{
+    --bg:#f6f8fb;--surface:#ffffff;--surface-hover:#eef2f7;--surface-variant:#e7ecf3;
+    --on-bg:#1c2430;--on-surface:#1c2430;--on-surface-variant:#5a6675;--outline:#dde3ec;
+  }
+  [data-theme="dark"]{
+    --bg:#0f141b;--surface:#1a212b;--surface-hover:#232c38;--surface-variant:#27313e;
+    --on-bg:#e8edf3;--on-surface:#eef2f7;--on-surface-variant:#9aa7b6;--outline:#2c3744;
+  }
+  .hidden{display:none!important;}
+</style>
+</head>
+<body data-theme="dark">
+  <div class="phone">
+    <div class="screen-wrap" id="screen">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋 100%</span></div>
+      <div id="appbar" class="appbar"></div>
+      <div id="page" class="scroll"></div>
+      <div id="bottomnav" class="bottomnav"></div>
+      <div id="scrim" class="scrim" onclick="closeDrawer()"></div>
+      <div id="drawer" class="drawer"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h1>法条通 · LawRefBook 整合版</h1>
+    <p>这是可点击的 <b>UI 预览原型</b>（非 Android 构建产物）。点底部导航切换页面，点分类→法条→进入阅读器。</p>
+    <ul>
+      <li>右上 <code>⌄</code> 进入「设置」可切换<b>深色/浅色</b>、<b>主题色</b>、<b>字号/行距/字距</b>。</li>
+      <li>阅读器支持<b>目录抽屉</b>、<b>收藏</b>、<b>关键词高亮</b>。</li>
+      <li>搜索用 <code>LIKE</code> 子串匹配（已验证中文两字可命中）。</li>
+    </ul>
+    <p>确认界面满意后，我再走真正的 Android 构建（minSdk 28 + 64/32 位两个独立包）。</p>
+    <p style="opacity:.6">👈 左：真机界面预览　右：说明</p>
+  </div>
+
+<script>
+/* ---------- seed color ---------- */
+const SEED = getComputedStyle(document.documentElement).getPropertyValue('--seed').trim() || '#1565C0';
+function hexToRgb(h){h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function setSeed(hex){
+  document.documentElement.style.setProperty('--seed',hex);
+  const [r,g,b]=hexToRgb(hex);
+  document.documentElement.style.setProperty('--seed-soft',`rgba(${r},${g},${b},.15)`);
+}
+setSeed(SEED);
+
+/* ---------- data (real, from db.sqlite3) ---------- */
+const CATEGORIES=[
+  {n:'宪法相关法',c:59},{n:'其他',c:3},{n:'行政法',c:131},{n:'民法商法',c:36},
+  {n:'社会法',c:31},{n:'刑法',c:14},{n:'经济法',c:99},{n:'劳动人事',c:0},
+  {n:'消费购物',c:0},{n:'行政协议诉讼',c:0},{n:'民法典相关',c:0},
+  {n:'诉讼与非诉讼程序法',c:15},{n:'司法解释',c:460},{n:'宪法',c:7},
+  {n:'民法典',c:9},{n:'行政法规',c:736},{n:'公安部规章',c:0},
+  {n:'市场监督管理总局',c:0},{n:'国家安全部',c:0},{n:'人力资源社会保障部',c:0},
+  {n:'有关法律问题和重大问题的决定',c:2},{n:'法律解释',c:23},{n:'生态环境法',c:1}
+];
+const LAWS_BY_CAT={
+  '刑法':['刑法','刑法修正案','刑法修正案（二）','刑法修正案（三）','刑法修正案（四）','刑法修正案（五）','刑法修正案（六）','刑法修正案（七）','刑法修正案（八）','刑法修正案（九）','刑法修正案（十）','刑法修正案（十一）','刑法修正案（十二）'],
+  '宪法':['中华人民共和国宪法','宪法修正案','全国人民代表大会组织法','国务院组织法','地方各级人民代表大会和地方各级人民政府组织法'],
+  '民法典':['中华人民共和国民法典','民法典侵权责任编','民法典物权编','民法典合同编','民法典婚姻家庭编','民法典继承编','民法典人格权编'],
+  '行政法':['中华人民共和国行政许可法','中华人民共和国行政处罚法','中华人民共和国行政复议法','中华人民共和国行政诉讼法','中华人民共和国行政强制法','中华人民共和国国家赔偿法'],
+  '社会法':['中华人民共和国劳动合同法','中华人民共和国社会保险法','中华人民共和国安全生产法','中华人民共和国老年人权益保障法','中华人民共和国妇女权益保障法','中华人民共和国残疾人保障法'],
+  '民法商法':['中华人民共和国证券法','中华人民共和国公司法','中华人民共和国合伙企业法','中华人民共和国个人独资企业法','中华人民共和国票据法','中华人民共和国保险法','中华人民共和国电子商务法'],
+  '司法解释':['最高人民法院关于适用《中华人民共和国民法典》总则编若干问题的解释','最高人民法院关于适用《中华人民共和国刑事诉讼法》的解释','最高人民法院关于审理民间借贷案件适用法律若干问题的规定'],
+  '诉讼与非诉讼程序法':['中华人民共和国刑事诉讼法','中华人民共和国民事诉讼法','中华人民共和国行政诉讼法','中华人民共和国仲裁法','中华人民共和国海事诉讼特别程序法'],
+  '宪法相关法':['中华人民共和国检察官法','中华人民共和国澳门特别行政区驻军法','中华人民共和国全国人民代表大会议事规则','中华人民共和国缔结条约程序法','中华人民共和国集会游行示威法','中华人民共和国监察官法','中华人民共和国居民身份证法'],
+  '经济法':['中华人民共和国反垄断法','中华人民共和国反不正当竞争法','中华人民共和国消费者权益保护法','中华人民共和国产品质量法','中华人民共和国税收征收管理法','中华人民共和国预算法'],
+  '法律解释':['全国人民代表大会常务委员会关于《中华人民共和国刑法》第九十三条第二款的解释','全国人民代表大会常务委员会关于《中华人民共和国刑法》第二百九十四条第一款的解释'],
+  '行政法规':['中华人民共和国道路运输条例','中华人民共和国食品安全法实施条例','中华人民共和国政府信息公开条例','中华人民共和国生产安全事故应急条例','中华人民共和国行政复议法实施条例'],
+  '有关法律问题和重大问题的决定':['全国人民代表大会常务委员会关于惩治骗购外汇、逃汇和非法买卖外汇犯罪的决定','全国人民代表大会常务委员会关于严禁卖淫嫖娼的决定'],
+  '生态环境法':['中华人民共和国环境保护法'],
+  '其他':['人体损伤程度鉴定标准','劳动仲裁和劳动诉讼的攻略']
+};
+const XINGFA_ARTICLES=[
+  {num:'第一条',body:'为了惩罚犯罪，保护人民，根据宪法，结合我国同犯罪作斗争的具体经验及实际情况，制定本法。'},
+  {num:'第二条',body:'中华人民共和国刑法的任务，是用刑罚同一切犯罪行为作斗争，以保卫国家安全，保卫人民民主专政的政权和社会主义制度，保护国有财产和劳动群众集体所有的财产，保护公民私人所有的财产，保护公民的人身权利、民主权利和其他权利，维护社会秩序、经济秩序，保障社会主义建设事业的顺利进行。'},
+  {num:'第三条',body:'法律明文规定为犯罪行为的，依照法律定罪处刑；法律没有明文规定为犯罪行为的，不得定罪处刑。'},
+  {num:'第四条',body:'对任何人犯罪，在适用法律上一律平等。不允许任何人有超越法律的特权。'},
+  {num:'第五条',body:'刑罚的轻重，应当与犯罪分子所犯罪行和承担的刑事责任相适应。'},
+  {num:'第六条',body:'凡在中华人民共和国领域内犯罪的，除法律有特别规定的以外，都适用本法。\n凡在中华人民共和国船舶或者航空器内犯罪的，也适用本法。\n犯罪的行为或者结果有一项发生在中华人民共和国领域内的，就认为是在中华人民共和国领域内犯罪。'}
+];
+const FAVORITES=['中华人民共和国刑法 · 第三条','中华人民共和国劳动合同法 · 第十条','最高人民法院关于适用《中华人民共和国民法典》总则编若干问题的解释'];
+const HISTORY=[{l:'中华人民共和国刑法',a:'第一条',t:'今天 09:12'},{l:'中华人民共和国劳动合同法',a:'第十条',t:'今天 08:47'},{l:'中华人民共和国刑事诉讼法',a:'第十二条',t:'昨天 21:30'}];
+
+/* ---------- state ---------- */
+let state={tab:'home',cat:null,law:null,query:'',dark:true,font:1,line:1.6,char:0,seed:'#1565C0',fav:new Set(FAVORITES)};
+
+const ICONS={
+  home:'<svg class="icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+  search:'<svg class="icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>',
+  star:'<svg class="icon" viewBox="0 0 24 24"><path d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>',
+  history:'<svg class="icon" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8z"/></svg>',
+  settings:'<svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.69.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.26.12.55.02.69-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>',
+  back:'<svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>',
+  menu:'<svg class="icon" viewBox="0 0 24 24"><path d="M3 18h18v-2H3zm0-5h18v-2H3zm0-7v2h18V6z"/></svg>',
+  chev:'<svg class="icon" viewBox="0 0 24 24" style="opacity:.4"><path d="M10 17l5-5-5-5z"/></svg>',
+  close:'<svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
+};
+
+/* ---------- render ---------- */
+function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
+function app(s){document.body.setAttribute('data-theme',s?'dark':'light');}
+
+function renderAppbar(){
+  const b=document.getElementById('appbar');
+  let right=`<div class="act" title="设置" onclick="go('settings')">${ICONS.settings}</div>`;
+  if(state.tab==='home'){
+    b.innerHTML=`<div class="title">法条通</div>${right}`;
+  }else if(state.tab==='cat'){
+    b.innerHTML=`<div class="act" onclick="go('home')">${ICONS.back}</div><div class="title">${state.cat}</div>${right}`;
+  }else if(state.tab==='reader'){
+    b.innerHTML=`<div class="act" onclick="go('cat')">${ICONS.back}</div><div class="title">${state.law}</div>`+
+      `<div class="act" title="目录" onclick="toggleDrawer()">${ICONS.menu}</div>${right}`;
+  }else if(state.tab==='search'){
+    b.innerHTML=`<div class="title">搜索</div>${right}`;
+  }else if(state.tab==='fav'){
+    b.innerHTML=`<div class="title">收藏</div>${right}`;
+  }else if(state.tab==='history'){
+    b.innerHTML=`<div class="title">阅读历史</div>${right}`;
+  }else if(state.tab==='settings'){
+    b.innerHTML=`<div class="act" onclick="back()">${ICONS.back}</div><div class="title">设置</div>`;
+  }
+}
+
+function renderBottomNav(){
+  const nav=document.getElementById('bottomnav');
+  const items=[
+    {k:'home',t:'首页',i:ICONS.home},
+    {k:'search',t:'搜索',i:ICONS.search},
+    {k:'fav',t:'收藏',i:ICONS.star},
+    {k:'history',t:'历史',i:ICONS.history},
+    {k:'settings',t:'设置',i:ICONS.settings}
+  ];
+  nav.innerHTML=items.map(it=>`<div class="bn-item ${state.tab===it.k?'active':''}" onclick="go('${it.k}')">
+     <span class="ic">${it.i}</span><span>${it.t}</span></div>`).join('');
+}
+
+function highlight(text,q){
+  if(!q) return text.replace(/\n/g,'<br/>');
+  const safe=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return text.replace(/\n/g,'<br/>').replace(new RegExp('('+safe+')','g'),'<mark>$1</mark>');
+}
+
+function renderPage(){
+  const p=document.getElementById('page');
+  p.scrollTop=0;
+  if(state.tab==='home') renderHome(p);
+  else if(state.tab==='cat') renderCat(p);
+  else if(state.tab==='reader') renderReader(p);
+  else if(state.tab==='search') renderSearch(p);
+  else if(state.tab==='fav') renderFav(p);
+  else if(state.tab==='history') renderHistory(p);
+  else if(state.tab==='settings') renderSettings(p);
+  renderAppbar();renderBottomNav();
+}
+
+function renderHome(p){
+  const cats=CATEGORIES.filter(c=>c.c>0 || true).slice(0,23);
+  p.innerHTML=`<div class="searchbox" onclick="go('search')">${ICONS.search}<span style="opacity:.7">搜索法条、罪名、关键词…</span></div>
+    <div class="section-title">法规分类 · 共 ${CATEGORIES.length} 类 / 1688 部</div>
+    <div class="cat-list">`+
+    cats.map(c=>`<div class="cat-item" onclick="openCat('${c.n.replace(/'/g,"\\'")}')">
+       <div class="cat-ic">§</div><div class="cat-name">${c.n}</div>
+       <div class="cat-count">${c.c||'—'}</div>${ICONS.chev}</div>`).join('')+`</div>`;
+}
+
+function openCat(name){
+  if(!LAWS_BY_CAT[name]){ // empty category -> still show placeholder
+    state.cat=name;state.tab='cat';state.law=null;renderPage();return;
+  }
+  state.cat=name;state.tab='cat';state.law=null;renderPage();
+}
+
+function renderCat(p){
+  const laws=LAWS_BY_CAT[state.cat]||[];
+  if(!laws.length){
+    p.innerHTML=`<div class="empty">「${state.cat}」暂无可浏览法条<br/>（该分类数据待补全）</div>`;return;
+  }
+  p.innerHTML=`<div class="section-title">${state.cat} · ${laws.length} 部</div>`+
+    laws.map(l=>`<div class="law-item" onclick="openLaw('${l.replace(/'/g,"\\'")}')">
+       <div class="law-name">${l}</div><div class="law-sub">点击阅读全文 · 支持目录跳转与收藏</div></div>`).join('');
+}
+
+function openLaw(name){
+  state.law=name;state.tab='reader';renderPage();
+}
+
+function renderReader(p){
+  const isXf=state.law==='刑法';
+  const arts=isXf?XINGFA_ARTICLES:[
+    {num:'第一条',body:`（${state.law} 示例条文）本条为演示内容。真实数据来自 LawRefBook/Laws 公有领域法条库，运行时按 db.sqlite3 目录 + 路径解析加载对应 .md 正文。`},
+    {num:'第二条',body:'法律明文规定为权利义务的，依照其规定；没有明文规定的，不得作不利解释。'},
+    {num:'第三条',body:'对任何人，在适用法律上一律平等。不允许任何人有超越法律的特权。'}
+  ];
+  const favKey=state.law+' · '+arts[0].num;
+  const faved=state.fav.has(favKey);
+  let html=`<div class="reader-head">
+     <div class="reader-meta">${state.cat} · 全文 · ${(arts.length)} 条 · <span class="toc-toggle" onclick="toggleDrawer()">☰ 目录</span></div>
+   </div>`;
+  html+=`<div class="reader-actions">
+     <button class="pill ${faved?'':'off'}" onclick="toggleFav('${favKey.replace(/'/g,"\\'")}',this)">${ICONS.star} ${faved?'已收藏':'收藏'}</button>
+     <button class="pill off" onclick="alert('已写入阅读历史（演示）')">${ICONS.history} 历史</button>
+   </div>`;
+  html+=arts.map(a=>`<div class="article-card">
+     <div class="article-num">${a.num}</div>
+     <div class="article-body">${highlight(a.body,state.query)}</div></div>`).join('');
+  p.innerHTML=html;
+  renderDrawer();
+}
+
+function renderDrawer(){
+  const d=document.getElementById('drawer');
+  const isXf=state.law==='刑法';
+  const toc=isXf?['第一编 总则','第一章 刑法的任务、基本原则和适用范围','第二章 犯罪','第三章 刑罚','第二编 分则']:
+    ['第一章 总则','第二章 权利与义务','第三章 法律责任','第四章 附则'];
+  d.innerHTML=`<h3>${state.law}</h3><div class="close" onclick="closeDrawer()">${ICONS.close}</div>`+
+    toc.map((t,i)=>`<div class="toc-item ${i===0?'active':''}" onclick="closeDrawer()">${t}</div>`).join('');
+}
+
+function renderSearch(p){
+  const q=state.query;
+  let results=[];
+  if(q){
+    for(const [cat,laws] of Object.entries(LAWS_BY_CAT)){
+      laws.forEach(l=>{ if(l.includes(q)||cat.includes(q)) results.push({cat,l}); });
+    }
+    // also category names
+    CATEGORIES.forEach(c=>{ if(c.n.includes(q)) results.push({cat:c.n,l:'（分类）'}); });
+  }
+  p.innerHTML=`<div class="searchbox">${ICONS.search}<input placeholder="输入关键词，如：刑法 / 合同 / 赔偿"
+      value="${q}" oninput="state.query=this.value;renderPage()" /></div>
+    <div class="section-title">${q?('命中 '+results.length+' 项'):'试试搜索：刑法、劳动合同、诉讼、赔偿、婚姻'}</div>`+
+    (q? results.slice(0,30).map(r=>`<div class="law-item" onclick="(function(){if(r.l==='（分类）'){openCat('${r.cat.replace(/'/g,"\\'")}')}else{state.cat='${r.cat.replace(/'/g,"\\'")}';openLaw('${r.l.replace(/'/g,"\\'")}')}})()">
+       <div class="law-name">${highlight(r.l,r.l==='（分类）'?q:q)}</div>
+       <div class="law-sub">${r.cat}</div></div>`).join('') :
+     `<div class="empty">输入关键词后实时 <b>LIKE</b> 子串匹配</div>`);
+}
+
+function renderFav(p){
+  const arr=[...state.fav];
+  p.innerHTML=`<div class="section-title">已收藏 ${arr.length} 条</div>`+
+    (arr.length? arr.map(f=>`<div class="law-item"><div class="law-name">${f}</div>
+      <div class="law-sub" style="display:flex;justify-content:space-between;align-items:center">
+      <span>点击可跳转（演示）</span>
+      <span class="tag" onclick="toggleFav('${f.replace(/'/g,"\\'")}',null,true)">移除</span></div></div>`).join('') :
+      `<div class="empty">还没有收藏<br/>在阅读器中点击 ★ 即可收藏法条/条文</div>`);
+}
+
+function renderHistory(p){
+  p.innerHTML=`<div class="section-title">最近阅读</div>`+
+    HISTORY.map(h=>`<div class="law-item" onclick="openLaw('${h.l.replace(/'/g,"\\'")}')">
+       <div class="law-name">${h.l} · ${h.a}</div><div class="law-sub">${h.t}</div></div>`).join('')+
+    `<div style="height:14px"></div><div class="set-row"><div><div class="lbl">清除历史</div>
+      <div class="desc">将清空本地阅读记录</div></div><div class="pill off" onclick="alert('已清空（演示）')">清除</div></div>`;
+}
+
+function renderSettings(p){
+  const seeds=['#1565C0','#C62828','#2E7D32','#6A1B9A','#EF6C00','#00838F'];
+  p.innerHTML=`
+    <div class="section-title">外观</div>
+    <div class="set-row"><div><div class="lbl">深色模式</div><div class="desc">跟随系统或手动切换</div></div>
+      <div class="switch ${state.dark?'on':''}" onclick="state.dark=!state.dark;app(state.dark);renderPage()"></div></div>
+    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="lbl">主题色</div><div class="chips">`+
+      seeds.map(s=>`<div class="chip ${state.seed===s?'sel':''}" style="background:${s}" onclick="state.seed='${s}';setSeed('${s}');renderPage()"></div>`).join('')+
+      `</div></div>
+
+    <div class="section-title">阅读设置</div>
+    <div class="set-row" style="flex-direction:column;align-items:stretch;gap:12px">
+      <div class="lbl">字号 <span style="opacity:.6">${Math.round(state.font*100)}%</span></div>
+      <input class="slider" type="range" min="0.8" max="1.6" step="0.05" value="${state.font}" oninput="state.font=+this.value;document.documentElement.style.setProperty('--font-scale',this.value);">
+      <div class="lbl">行距 <span style="opacity:.6">${state.line.toFixed(2)}</span></div>
+      <input class="slider" type="range" min="1.3" max="2.2" step="0.05" value="${state.line}" oninput="state.line=+this.value;document.documentElement.style.setProperty('--line-scale',this.value);">
+      <div class="lbl">字距 <span style="opacity:.6">${state.char}</span></div>
+      <input class="slider" type="range" min="0" max="3" step="1" value="${state.char}" oninput="state.char=+this.value;document.documentElement.style.setProperty('--char-scale',this.value);">
+    </div>
+
+    <div class="section-title">关于</div>
+    <div class="set-row"><div><div class="lbl">法条通 · LawRefBook 整合版</div>
+      <div class="desc">整合 xloger/LawRefBookAndroid + IncoderApp/LawRefBook<br/>数据源 LawRefBook/Laws（公有领域）· 1688 部法条<br/>minSdk 28（Android 9）· 64/32 位双包</div></div></div>
+    <div class="set-row"><div><div class="lbl">版本</div><div class="desc">1.0.0 (build 1)</div></div></div>`;
+}
+
+/* ---------- actions ---------- */
+function go(tab){
+  if(tab==='home'){state.tab='home';state.cat=null;state.law=null;}
+  else if(tab==='search'){state.tab='search';}
+  else if(tab==='fav'){state.tab='fav';}
+  else if(tab==='history'){state.tab='history';}
+  else if(tab==='settings'){state.tab='settings';}
+  renderPage();
+}
+function back(){ // from settings or detail
+  if(state.tab==='settings'){state.tab='home';}
+  else if(state.tab==='reader'){state.tab='cat';}
+  else if(state.tab==='cat'){state.tab='home';state.cat=null;}
+  renderPage();
+}
+function toggleDrawer(){document.getElementById('drawer').classList.toggle('open');document.getElementById('scrim').classList.toggle('show');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('scrim').classList.remove('show');}
+function toggleFav(key,btn,fromList){
+  if(state.fav.has(key)){state.fav.delete(key);}else{state.fav.add(key);}
+  if(btn){const on=state.fav.has(key);btn.classList.toggle('off',!on);btn.innerHTML=ICONS.star+' '+(on?'已收藏':'收藏');}
+  if(fromList) renderPage();
+}
+
+/* init */
+app(true);renderPage();
+</script>
+</body>
+</html>

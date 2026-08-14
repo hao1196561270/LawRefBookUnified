@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 盾形底（法律/守护意象） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54 24 L78 34 V74 C78 84 67 90 54 92 C41 90 30 84 30 74 V34 Z" />
+    <!-- 内盾（主题蓝） -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54 32 L70 39 V72 C70 79 62 83 54 85 C46 83 38 79 38 72 V39 Z" />
+    <!-- 书脊条文 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48 46 H60 V50 H48 Z M48 56 H60 V60 H48 Z M48 66 H56 V70 H48 Z" />
+</vector>

@@ -1,0 +1,10 @@
+// 法条通 · LawRefBook 整合版 —— 根构建脚本
+// 整合自两款开源安卓法条 App：
+//   - xloger/LawRefBookAndroid (Kotlin + Room)
+//   - IncoderApp/LawRefBook   (Java)
+// 数据源：LawRefBook/Laws（公有领域法条 + 开源整理）
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+    id 'com.google.devtools.ksp' version '1.9.24-1.0.20' apply false
+}

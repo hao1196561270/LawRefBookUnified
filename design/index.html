@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>法条通 · MD3 设计原型</title>
+<style>
+  /* ============ MD3 设计令牌（由 JS 动态覆盖） ============ */
+  :root{
+    --primary:#6750A4; --on-primary:#FFFFFF; --primary-container:#EADDFF; --on-primary-container:#21005D;
+    --secondary:#625B71; --on-secondary:#FFFFFF; --secondary-container:#E8DEF8; --on-secondary-container:#1D192B;
+    --tertiary:#7D5260; --on-tertiary:#FFFFFF; --tertiary-container:#FFD8E4; --on-tertiary-container:#31111D;
+    --error:#B3261E; --on-error:#FFFFFF; --error-container:#F9DEDC; --on-error-container:#410E0B;
+    --background:#FFFBFE; --on-background:#1C1B1F;
+    --surface:#FFFBFE; --on-surface:#1C1B1F; --surface-variant:#E7E0EC; --on-surface-variant:#49454F;
+    --outline:#79747E; --outline-variant:#CAC4D0;
+    --inverse-surface:#313033; --inverse-on-surface:#F4EFF4; --inverse-primary:#D0BCFF;
+    --scrim:#000000;
+    /* 形状 */
+    --shape-xs:4px; --shape-s:8px; --shape-m:12px; --shape-l:16px; --shape-xl:28px; --shape-full:999px;
+    /* 字体 */
+    --font:'Roboto','PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif;
+    /* 设备宽度 */
+    --device-w:390px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:var(--font); background:#1a1a1e; color:#e6e1e5;
+    display:flex; gap:28px; padding:28px; min-height:100vh; align-items:flex-start; flex-wrap:wrap;
+    justify-content:center;
+  }
+  /* ===== 控制面板 ===== */
+  .panel{
+    width:300px; background:#25252b; border-radius:20px; padding:22px; position:sticky; top:28px;
+  }
+  .panel h1{font-size:18px; font-weight:700; margin-bottom:4px; color:#fff;}
+  .panel .sub{font-size:12px; color:#a8a3ad; margin-bottom:18px; line-height:1.5;}
+  .group{margin-bottom:20px;}
+  .group > label{display:block; font-size:12px; font-weight:600; color:#c7c2cc; margin-bottom:8px; letter-spacing:.3px;}
+  .seg{display:flex; background:#1c1c22; border-radius:12px; padding:4px; gap:4px;}
+  .seg button{
+    flex:1; border:none; background:transparent; color:#a8a3ad; font-family:var(--font);
+    font-size:13px; font-weight:600; padding:8px 4px; border-radius:9px; cursor:pointer; transition:.18s;
+  }
+  .seg button.active{background:var(--primary); color:var(--on-primary);}
+  .swatches{display:flex; flex-wrap:wrap; gap:8px;}
+  .sw{width:34px; height:34px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:.15s;}
+  .sw.active{border-color:#fff; transform:scale(1.12);}
+  .sw.custom{display:flex; align-items:center; justify-content:center; background:#1c1c22; color:#a8a3ad; font-size:11px; overflow:hidden;}
+  .sw.custom input{opacity:0; width:0; height:0;}
+  .hint{font-size:11px; color:#8a858f; line-height:1.6; background:#1c1c22; padding:10px 12px; border-radius:10px; margin-top:6px;}
+  .legend{font-size:11px; color:#a8a3ad; line-height:1.7;}
+  .legend b{color:#c7c2cc;}
+
+  /* ===== 设备框 ===== */
+  .stage{flex:0 0 auto;}
+  .device{
+    width:var(--device-w); background:var(--background); border-radius:38px; padding:10px;
+    box-shadow:0 30px 70px rgba(0,0,0,.55), 0 0 0 2px #333; overflow:hidden; position:relative;
+    transition:width .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .screen-wrap{
+    height:780px; border-radius:30px; overflow:hidden; position:relative; background:var(--background);
+    display:flex; flex-direction:column;
+  }
+  .statusbar{height:30px; display:flex; align-items:center; justify-content:space-between; padding:0 18px;
+    font-size:12px; font-weight:600; color:var(--on-surface); flex:0 0 auto;}
+  .statusbar .icons{display:flex; gap:6px; align-items:center;}
+
+  /* ===== 应用内容区 ===== */
+  .app{flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--background);}
+  .app-body{flex:1; overflow-y:auto; color:var(--on-surface);}
+  .app-body::-webkit-scrollbar{width:0;}
+
+  /* MD3 顶部应用栏 */
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:14px 18px; background:var(--surface);
+    color:var(--on-surface); position:sticky; top:0; z-index:5; flex:0 0 auto;
+  }
+  .topbar.large{padding:18px 18px 22px; flex-direction:column; align-items:flex-start; gap:10px; background:var(--surface);}
+  .topbar h2{font-size:16px; font-weight:600;}
+  .topbar.large h2{font-size:26px; font-weight:400; letter-spacing:.2px;}
+  .topbar .icon-btn{
+    width:40px; height:40px; border-radius:var(--shape-full); display:flex; align-items:center; justify-content:center;
+    background:transparent; border:none; color:var(--on-surface-variant); cursor:pointer; flex:0 0 auto; transition:.15s;
+  }
+  .topbar .icon-btn:hover{background:color-mix(in srgb,var(--on-surface) 8%,transparent);}
+  .topbar .spacer{flex:1;}
+  .topbar .title-wrap{display:flex; align-items:center; gap:12px; width:100%;}
+  /* 搜索栏（MD3） */
+  .searchbar{
+    display:flex; align-items:center; gap:10px; background:var(--surface-variant); color:var(--on-surface-variant);
+    border-radius:var(--shape-full); padding:10px 16px; cursor:text;
+  }
+  .searchbar input{border:none; background:transparent; outline:none; font-family:var(--font); font-size:15px; flex:1; color:var(--on-surface);}
+  .searchbar input::placeholder{color:var(--on-surface-variant);}
+
+  /* 内容内边距 */
+  .pad{padding:16px 18px;}
+  .section-title{font-size:13px; font-weight:600; color:var(--on-surface-variant); letter-spacing:.5px; margin:18px 18px 10px; text-transform:none;}
+
+  /* 分类网格卡片 */
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:0 18px;}
+  .cat-card{
+    background:var(--surface-variant); border-radius:var(--shape-l); padding:14px;
+    display:flex; flex-direction:column; gap:8px; border:1px solid var(--outline-variant); cursor:pointer; transition:.18s;
+  }
+  .cat-card:hover{background:color-mix(in srgb,var(--primary) 10%,var(--surface-variant));}
+  .cat-ic{width:40px; height:40px; border-radius:var(--shape-m); background:var(--primary-container); color:var(--on-primary-container);
+    display:flex; align-items:center; justify-content:center; font-size:20px;}
+  .cat-card .t{font-size:15px; font-weight:600; color:var(--on-surface);}
+  .cat-card .c{font-size:11px; color:var(--on-surface-variant);}
+
+  /* 最近浏览 chips */
+  .chips-row{display:flex; gap:8px; overflow-x:auto; padding:0 18px 4px;}
+  .chips-row::-webkit-scrollbar{height:0;}
+  .chip{
+    flex:0 0 auto; background:var(--secondary-container); color:var(--on-secondary-container);
+    border-radius:var(--shape-full); padding:8px 14px; font-size:13px; font-weight:500; border:1px solid transparent; cursor:pointer;
+  }
+  .chip.outline{background:transparent; border-color:var(--outline); color:var(--on-surface-variant);}
+
+  /* 列表项 MD3 */
+  .list{padding:4px 8px;}
+  .item{
+    display:flex; align-items:center; gap:14px; padding:12px 12px; border-radius:var(--shape-m); cursor:pointer; transition:.15s;
+  }
+  .item:hover{background:color-mix(in srgb,var(--on-surface) 6%,transparent);}
+  .item .lead{width:40px; height:40px; border-radius:var(--shape-full); background:var(--primary-container); color:var(--on-primary-container);
+    display:flex; align-items:center; justify-content:center; font-size:18px; flex:0 0 auto;}
+  .item .body{flex:1; min-width:0;}
+  .item .body .t{font-size:15px; font-weight:500; color:var(--on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .body .s{font-size:12px; color:var(--on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+  .item .trail{color:var(--on-surface-variant); font-size:13px; flex:0 0 auto;}
+  .item .trail.bookmarked{color:var(--primary);}
+
+  /* 阅读页 */
+  .reader{padding:8px 22px 24px; line-height:1.9; font-size:16px; color:var(--on-surface);}
+  .reader h3{font-size:20px; font-weight:500; margin:22px 0 10px;}
+  .reader .art{font-weight:700; color:var(--primary); margin-right:10px;}
+  .reader p{margin-bottom:14px; text-align:justify;}
+  .reader .note{background:var(--secondary-container); color:var(--on-secondary-container); border-radius:var(--shape-s); padding:10px 14px; font-size:14px; margin:14px 0;}
+
+  /* 分段按钮（MD3 SegmentedButton） */
+  .seg-btns{display:flex; background:var(--surface-variant); border-radius:var(--shape-full); padding:4px; margin:0 18px;}
+  .seg-btns button{flex:1; border:none; background:transparent; color:var(--on-surface-variant); font-family:var(--font);
+    font-size:13px; font-weight:600; padding:8px; border-radius:var(--shape-full); cursor:pointer; transition:.18s;}
+  .seg-btns button.active{background:var(--surface); color:var(--on-surface); box-shadow:0 1px 3px rgba(0,0,0,.2);}
+
+  /* 底部导航栏（手机） */
+  .botnav{display:flex; background:var(--surface); border-top:1px solid var(--outline-variant); padding:8px 0 12px; flex:0 0 auto;}
+  .botnav button{flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px;
+    color:var(--on-surface-variant); font-family:var(--font); font-size:11px; padding-top:6px; transition:.15s;}
+  .botnav button .ic{font-size:20px;}
+  .botnav button.active{color:var(--primary);}
+  .botnav button.active .ic{position:relative;}
+  .botnav button.active .ic::after{content:''; position:absolute; left:50%; top:-6px; transform:translateX(-50%); width:36px; height:32px; background:var(--secondary-container); border-radius:var(--shape-full); z-index:-1;}
+
+  /* 导航导轨（平板） */
+  .rail{display:none; flex-direction:column; align-items:center; gap:6px; background:var(--surface); padding:18px 8px; flex:0 0 auto;
+    border-right:1px solid var(--outline-variant);}
+  .rail button{border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px;
+    color:var(--on-surface-variant); font-size:11px; padding:10px 8px; border-radius:var(--shape-l); width:76px; transition:.15s;}
+  .rail button .ic{font-size:22px;}
+  .rail button.active{color:var(--primary); background:var(--secondary-container);}
+
+  /* 设置项 */
+  .setgroup{margin:8px 18px 4px;}
+  .setgroup .gh{font-size:12px; font-weight:600; color:var(--primary); letter-spacing:.4px; margin:14px 4px 6px;}
+  .setrow{display:flex; align-items:center; gap:14px; padding:14px 12px; border-radius:var(--shape-m);}
+  .setrow .ic{width:28px; text-align:center; color:var(--on-surface-variant); font-size:18px;}
+  .setrow .lb{flex:1;}
+  .setrow .lb .t{font-size:15px; color:var(--on-surface); font-weight:500;}
+  .setrow .lb .d{font-size:12px; color:var(--on-surface-variant); margin-top:2px;}
+  /* 开关 */
+  .switch{width:46px; height:26px; border-radius:var(--shape-full); background:var(--surface-variant); position:relative; cursor:pointer; transition:.2s; border:2px solid var(--outline-variant);}
+  .switch.on{background:var(--primary); border-color:var(--primary);}
+  .switch::after{content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--outline); transition:.2s;}
+  .switch.on::after{left:22px; background:var(--on-primary);}
+
+  /* FAB */
+  .fab{position:absolute; right:20px; bottom:84px; width:56px; height:56px; border-radius:var(--shape-full);
+    background:var(--primary-container); color:var(--on-primary-container); display:flex; align-items:center; justify-content:center;
+    font-size:24px; box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; z-index:8;}
+  .rail ~ .app .fab{bottom:24px;}
+
+  /* 底部抽屉（Bottom Sheet） */
+  .sheet-scrim{position:absolute; inset:0; background:var(--scrim); opacity:0; pointer-events:none; transition:.25s; z-index:9;}
+  .sheet-scrim.show{opacity:.4; pointer-events:auto;}
+  .sheet{position:absolute; left:0; right:0; bottom:0; background:var(--surface); border-radius:var(--shape-xl) var(--shape-xl) 0 0;
+    transform:translateY(110%); transition:transform .3s cubic-bezier(.2,.8,.2,1); z-index:10; max-height:80%; overflow-y:auto; padding-bottom:24px;}
+  .sheet.show{transform:translateY(0);}
+  .sheet .handle{width:32px; height:4px; border-radius:var(--shape-full); background:var(--outline-variant); margin:10px auto 14px;}
+  .sheet h3{font-size:18px; font-weight:500; padding:0 20px 12px; color:var(--on-surface);}
+
+  /* 抽屉（目录 / 分类） */
+  .drawer-scrim{position:absolute; inset:0; background:var(--scrim); opacity:0; pointer-events:none; transition:.25s; z-index:11;}
+  .drawer-scrim.show{opacity:.4; pointer-events:auto;}
+  .drawer{position:absolute; top:0; bottom:0; left:0; width:80%; max-width:300px; background:var(--surface);
+    transform:translateX(-105%); transition:transform .3s cubic-bezier(.2,.8,.2,1); z-index:12; padding:16px 8px; overflow-y:auto;}
+  .drawer.show{transform:translateX(0);}
+  .drawer .dh{display:flex; align-items:center; gap:12px; padding:10px 14px 16px;}
+  .drawer .dh .ic{width:40px;height:40px;border-radius:var(--shape-full);background:var(--primary-container);color:var(--on-primary-container);display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .drawer .dh .t{font-size:20px;font-weight:500;color:var(--on-surface);}
+
+  /* 评分/弹层卡片示例 */
+  .mini-card{background:var(--surface-variant); border-radius:var(--shape-l); padding:14px; margin:10px 20px; font-size:14px; color:var(--on-surface);}
+
+  /* 隐藏非活动屏 */
+  .screen{display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0;}
+  .screen.active{display:flex;}
+
+  /* 平板：显示导轨，隐藏底部导航 */
+  .device.tablet{--device-w:1000px;}
+  .device.tablet .botnav{display:none;}
+  .device.tablet .rail{display:flex;}
+  .device.tablet .screen-wrap{flex-direction:row;}
+  .device.tablet .app-body{padding-right:8px;}
+  .device.foldable{--device-w:760px;}
+  .device.foldable .botnav{display:none;}
+  .device.foldable .rail{display:flex;}
+
+  .badge{position:absolute; top:6px; right:6px; background:var(--error); color:var(--on-error); font-size:10px;
+    min-width:16px; height:16px; border-radius:var(--shape-full); display:flex; align-items:center; justify-content:center; padding:0 4px;}
+  .fab .badge{top:-2px; right:-2px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== 控制面板 ===================== -->
+<div class="panel">
+  <h1>法条通 · MD3 设计原型</h1>
+  <div class="sub">Material Design 3 全新界面方案。可切换明暗主题、体验动态配色（Material You），并预览手机 / 折叠屏 / 平板三档响应式布局。</div>
+
+  <div class="group">
+    <label>主题模式</label>
+    <div class="seg" id="themeSeg">
+      <button data-theme="light" class="active">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>动态配色（提取源色 → 生成色调调色板）</label>
+    <div class="swatches" id="swatches"></div>
+    <div class="hint">MD3「动态配色」会从壁纸提取主色，自动生成整套 tonal palette。下方任选预设或自定义任意颜色，界面主色、容器色、强调色将实时联动。</div>
+  </div>
+
+  <div class="group">
+    <label>设备形态（响应式）</label>
+    <div class="seg" id="deviceSeg">
+      <button data-dev="phone" class="active">手机</button>
+      <button data-dev="foldable">折叠屏</button>
+      <button data-dev="tablet">平板</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <label>本次方案要点</label>
+    <div class="legend">
+      <b>· 视觉层级</b>：大号顶部应用栏 + 分类色卡 + 列表二级信息<br>
+      <b>· 动态配色</b>：源色驱动 primary / container / tertiary<br>
+      <b>· 组件形态</b>：圆角令牌、FAB、分段按钮、底部抽屉<br>
+      <b>· 导航结构</b>：底部导航栏（手机）/ 导航导轨（大屏）<br>
+      <b>· 手势</b>：抽屉横滑、抽屉拖拽关闭、Sheet 拖拽<br>
+      <b>· 无障碍</b>：对比度 ≥ WCAG AA，触控目标 ≥ 48px
+    </div>
+  </div>
+</div>
+
+<!-- ===================== 设备预览 ===================== -->
+<div class="stage">
+  <div class="device phone" id="device">
+    <div class="screen-wrap">
+      <!-- 导航导轨（折叠/平板） -->
+      <div class="rail" id="rail">
+        <button data-screen="home" class="active"><span class="ic">🏠</span>首页</button>
+        <button data-screen="search"><span class="ic">🔍</span>搜索</button>
+        <button data-screen="fav"><span class="ic">⭐</span>收藏</button>
+        <button data-screen="settings"><span class="ic">⚙️</span>设置</button>
+      </div>
+
+      <!-- 应用主体 -->
+      <div class="app">
+        <div class="statusbar">
+          <span id="clock">20:02</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+
+        <!-- ===== 首页 ===== -->
+        <div class="screen active" id="home">
+          <div class="topbar large">
+            <div class="title-wrap">
+              <button class="icon-btn" onclick="openDrawer()">☰</button>
+              <h2>法条通</h2>
+            </div>
+            <div class="searchbar" style="width:100%" onclick="go('search')">
+              🔍 <input placeholder="搜索法律、法规、条文…" readonly>
+            </div>
+          </div>
+          <div class="app-body">
+            <div class="section-title">法律分类</div>
+            <div class="grid" id="catGrid"></div>
+            <div class="section-title">最近浏览</div>
+            <div class="chips-row">
+              <div class="chip">刑法 · 第 232 条</div>
+              <div class="chip">民法典 · 合同编</div>
+              <div class="chip">劳动合同法</div>
+              <div class="chip">道路交通安全法</div>
+            </div>
+            <div class="section-title">常用法规</div>
+            <div class="list" id="homeList"></div>
+          </div>
+        </div>
+
+        <!-- ===== 分类 / 法规列表 ===== -->
+        <div class="screen" id="lawlist">
+          <div class="topbar">
+            <button class="icon-btn" onclick="go('home')">←</button>
+            <div class="title-wrap"><h2 id="catTitle">刑法</h2></div>
+            <button class="icon-btn" onclick="openSheet('filter')">⚙️</button>
+          </div>
+          <div class="seg-btns" style="margin-top:12px">
+            <button class="active">全部</button>
+            <button>法律</button>
+            <button>行政法规</button>
+            <button>司法解释</button>
+          </div>
+          <div class="app-body">
+            <div class="list" id="lawListItems"></div>
+          </div>
+        </div>
+
+        <!-- ===== 阅读页 ===== -->
+        <div class="screen" id="reader">
+          <div class="topbar">
+            <button class="icon-btn" onclick="go('lawlist')">←</button>
+            <div class="title-wrap" style="flex-direction:column;align-items:flex-start;gap:2px">
+              <h2 style="font-size:16px">中华人民共和国刑法</h2>
+              <span style="font-size:12px;color:var(--on-surface-variant)">第二章 犯罪 · 第二节 犯罪的预备、未遂和中止</span>
+            </div>
+            <button class="icon-btn" onclick="openDrawer('toc')">☰</button>
+          </div>
+          <div class="app-body">
+            <div class="reader">
+              <h3>第二节 犯罪的预备、未遂和中止</h3>
+              <p><span class="art">第二十二条</span>为了犯罪，准备工具、制造条件的，是犯罪预备。对于预备犯，可以比照既遂犯从轻、减轻处罚或者免除处罚。</p>
+              <p><span class="art">第二十三条</span>已经着手实行犯罪，由于犯罪分子意志以外的原因而未得逞的，是犯罪未遂。对于未遂犯，可以比照既遂犯从轻或者减轻处罚。</p>
+              <div class="note">💡 修订提示：本条对应《刑法修正案（十二）》最新表述，已于 2024 年 3 月 1 日起施行。</div>
+              <p><span class="art">第二十四条</span>在犯罪过程中，自动放弃犯罪或者自动有效地防止犯罪结果发生的，是犯罪中止。对于中止犯，没有造成损害的，应当免除处罚；造成损害的，应当减轻处罚。</p>
+              <p style="margin-top:18px;color:var(--on-surface-variant);font-size:13px">— 数据来源：LawRefBook/Laws · 最近同步 2026-06-03 —</p>
+            </div>
+          </div>
+          <div class="fab" onclick="toast('已加入收藏')">🔖</div>
+        </div>
+
+        <!-- ===== 搜索 ===== -->
+        <div class="screen" id="search">
+          <div class="topbar">
+            <button class="icon-btn" onclick="go('home')">←</button>
+            <div class="searchbar" style="flex:1">
+              🔍 <input placeholder="输入关键词 / 条文编号" value="正当防卫">
+            </div>
+          </div>
+          <div class="app-body">
+            <div class="section-title">筛选</div>
+            <div class="seg-btns">
+              <button class="active">综合</button>
+              <button>按效力层级</button>
+              <button>按发布机关</button>
+              <button>仅标题</button>
+            </div>
+            <div class="section-title">最近搜索</div>
+            <div class="chips-row">
+              <div class="chip outline">正当防卫</div>
+              <div class="chip outline">竞业限制</div>
+              <div class="chip outline">工伤认定</div>
+            </div>
+            <div class="section-title">结果（12）</div>
+            <div class="list" id="searchList"></div>
+          </div>
+        </div>
+
+        <!-- ===== 收藏 / 历史 ===== -->
+        <div class="screen" id="fav">
+          <div class="topbar"><div class="title-wrap" style="padding-left:6px"><h2>收藏与历史</h2></div></div>
+          <div class="seg-btns" style="margin-top:12px">
+            <button class="active" onclick="switchFav('fav')">我的收藏</button>
+            <button onclick="switchFav('his')">浏览历史</button>
+          </div>
+          <div class="app-body">
+            <div class="list" id="favList"></div>
+          </div>
+        </div>
+
+        <!-- ===== 设置 ===== -->
+        <div class="screen" id="settings">
+          <div class="topbar"><div class="title-wrap" style="padding-left:6px"><h2>设置</h2></div></div>
+          <div class="app-body">
+            <div class="setgroup">
+              <div class="gh">外观</div>
+              <div class="setrow"><span class="ic">🌗</span><div class="lb"><div class="t">主题模式</div><div class="d">浅色 · 深色 · 跟随系统</div></div><span style="font-size:13px;color:var(--on-surface-variant)">深色 ›</span></div>
+              <div class="setrow"><span class="ic">🎨</span><div class="lb"><div class="t">动态配色</div><div class="d">从壁纸提取主色生成主题</div></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="setrow"><span class="ic">🔠</span><div class="lb"><div class="t">阅读字号</div><div class="d">标准（16px）</div></div><span style="font-size:13px;color:var(--on-surface-variant)">›</span></div>
+            </div>
+            <div class="setgroup">
+              <div class="gh">法条数据</div>
+              <div class="setrow"><span class="ic">🗂️</span><div class="lb"><div class="t">数据版本</div><div class="d">2026-06-03（最新）</div></div></div>
+              <div class="setrow"><span class="ic">🔄</span><div class="lb"><div class="t">自动月度更新</div><div class="d">每 30 天检查一次法条更新</div></div><div class="switch on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="setrow" onclick="toast('正在检查更新…')"><span class="ic">☁️</span><div class="lb"><div class="t">检查更新</div><div class="d">手动同步最新法条</div></div><span style="font-size:13px;color:var(--primary)">检查 ›</span></div>
+            </div>
+            <div class="setgroup">
+              <div class="gh">关于</div>
+              <div class="setrow"><span class="ic">ℹ️</span><div class="lb"><div class="t">法条通</div><div class="d">版本 1.0 · Material Design 3</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部导航栏（手机） -->
+        <div class="botnav" id="botnav">
+          <button data-screen="home" class="active"><span class="ic">🏠</span>首页</button>
+          <button data-screen="search"><span class="ic">🔍</span>搜索</button>
+          <button data-screen="fav"><span class="ic">⭐</span>收藏</button>
+          <button data-screen="settings"><span class="ic">⚙️</span>设置</button>
+        </div>
+      </div>
+
+      <!-- 底部抽屉 -->
+      <div class="sheet-scrim" id="sheetScrim" onclick="closeSheet()"></div>
+      <div class="sheet" id="sheet">
+        <div class="handle"></div>
+        <h3 id="sheetTitle">筛选</h3>
+        <div class="mini-card">效力层级：法律 / 行政法规 / 地方性法规 / 司法解释 / 部门规章</div>
+        <div class="mini-card">发布机关：全国人大 · 国务院 · 最高人民法院 · 最高人民检察院 · 部委</div>
+        <div class="mini-card">时效性：现行有效 / 已修改 / 已废止</div>
+      </div>
+
+      <!-- 左侧抽屉（分类 / 目录） -->
+      <div class="drawer-scrim" id="drawerScrim" onclick="closeDrawer()"></div>
+      <div class="drawer" id="drawer">
+        <div class="dh"><div class="ic" id="drawerIc">📚</div><div class="t" id="drawerTitle">分类导航</div></div>
+        <div class="list" id="drawerList"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== MD3 动态配色引擎（源色 → tonal palette） ===== */
+function hexToRgb(hex){hex=hex.replace('#','');return {r:parseInt(hex.substr(0,2),16),g:parseInt(hex.substr(2,2),16),b:parseInt(hex.substr(4,2),16)};}
+function rgbToHex(r,g,b){const h=x=>('0'+Math.round(Math.max(0,Math.min(255,x))).toString(16)).slice(-2);return '#'+h(r)+h(g)+h(b);}
+function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;if(max===min){h=s=0;}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return {h:h*360,s,l};}
+function hslToRgb(h,s,l){h/=360;let r,g,b;if(s===0){r=g=b=l;}else{const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=f(p,q,h+1/3);g=f(p,q,h);b=f(p,q,h-1/3);}return {r:r*255,g:g*255,b:b*255};}
+function hslToHex(h,s,l){const {r,g,b}=hslToRgb(h,s,l);return rgbToHex(r,g,b);}
+function lum(hex){const {r,g,b}=hexToRgb(hex);const a=[r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2];}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+function buildPalette(src,mode){
+  const {h,s}=rgbToHsl(...Object.values(hexToRgb(src)));
+  const S=clamp(s,0.55,0.92), light=mode==='light';
+  const primary=hslToHex(h,S,light?0.45:0.80);
+  const primaryContainer=hslToHex(h,clamp(S*0.5,0.3,0.6),light?0.92:0.30);
+  const onPrimaryContainer=hslToHex(h,clamp(S*0.5,0.3,0.6),light?0.18:0.85);
+  const onPrimary=lum(primary)>0.4?'#1C1B1F':'#FFFFFF';
+  const secH=(h+35)%360,secS=clamp(S*0.32,0.06,0.38);
+  const secondary=hslToHex(secH,secS,light?0.45:0.80);
+  const secondaryContainer=hslToHex(secH,clamp(secS*0.5,0.05,0.3),light?0.92:0.30);
+  const onSecondaryContainer=hslToHex(secH,clamp(secS*0.5,0.05,0.3),light?0.18:0.85);
+  const onSecondary=lum(secondary)>0.4?'#1C1B1F':'#FFFFFF';
+  const terH=(h+150)%360,terS=clamp(S*0.58,0.32,0.78);
+  const tertiary=hslToHex(terH,terS,light?0.45:0.80);
+  const tertiaryContainer=hslToHex(terH,clamp(terS*0.5,0.22,0.52),light?0.92:0.30);
+  const onTertiaryContainer=hslToHex(terH,clamp(terS*0.5,0.22,0.52),light?0.18:0.85);
+  const onTertiary=lum(tertiary)>0.4?'#1C1B1F':'#FFFFFF';
+  const ns=0.04;
+  const surface=hslToHex(h,ns,light?0.99:0.12);
+  const background=hslToHex(h,ns,light?0.99:0.12);
+  const onSurface=hslToHex(h,0.06,light?0.12:0.90);
+  const onBackground=hslToHex(h,0.06,light?0.12:0.90);
+  const surfaceVariant=hslToHex(h,0.06,light?0.94:0.22);
+  const onSurfaceVariant=hslToHex(h,0.06,light?0.40:0.80);
+  const outline=hslToHex(h,0.06,light?0.55:0.62);
+  const outlineVariant=hslToHex(h,0.06,light?0.82:0.30);
+  const inverseSurface=hslToHex(h,ns,light?0.18:0.92);
+  const inverseOnSurface=hslToHex(h,ns,light?0.92:0.18);
+  const inversePrimary=hslToHex(h,S,light?0.80:0.45);
+  return {primary,onPrimary,primaryContainer,onPrimaryContainer,secondary,onSecondary,secondaryContainer,onSecondaryContainer,
+    tertiary,onTertiary,tertiaryContainer,onTertiaryContainer,
+    error:light?'#B3261E':'#F2B8B5',onError:light?'#FFFFFF':'#601410',
+    errorContainer:light?'#F9DEDC':'#8C1D18',onErrorContainer:light?'#410E0B':'#F9DEDC',
+    background,onBackground,surface,onSurface,surfaceVariant,onSurfaceVariant,outline,outlineVariant,inverseSurface,inverseOnSurface,inversePrimary};
+}
+let CURRENT_SRC='#6750A4';
+function applyPalette(src){
+  CURRENT_SRC=src;
+  const mode=document.getElementById('themeSeg').querySelector('.active').dataset.theme;
+  const p=buildPalette(src,mode);
+  const root=document.documentElement;
+  for(const k in p){root.style.setProperty('--'+k.replace(/([A-Z])/g,'-$1').toLowerCase(),p[k]);}
+  // 状态栏/导航栏适配
+}
+
+/* ===== 预设源色 ===== */
+const PRESETS=[
+  {n:'紫（默认）',c:'#6750A4'},
+  {n:'靛蓝',c:'#4F5BD5'},
+  {n:'青绿',c:'#0CA7A8'},
+  {n:'朱红',c:'#E35336'},
+  {n:'紫罗兰',c:'#7A5AC7'},
+  {n:'森绿',c:'#2E7D5B'},
+  {n:'琥珀',c:'#C98A1B'},
+];
+const swEl=document.getElementById('swatches');
+PRESETS.forEach((p,i)=>{
+  const d=document.createElement('div');d.className='sw'+(i===0?' active':'');d.style.background=p.c;d.title=p.n;
+  d.onclick=()=>{document.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));d.classList.add('active');applyPalette(p.c);};
+  swEl.appendChild(d);
+});
+const custom=document.createElement('label');custom.className='sw custom';custom.innerHTML='+<input type="color" value="#6750A4">';
+custom.querySelector('input').oninput=e=>{document.querySelectorAll('.sw').forEach(x=>x.classList.remove('active'));custom.classList.add('active');applyPalette(e.target.value);};
+swEl.appendChild(custom);
+
+/* ===== 主题切换 ===== */
+document.getElementById('themeSeg').addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON')return;
+  document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  applyPalette(CURRENT_SRC);
+});
+function rgbToHexFromBg(bg){ // '#6750A4' 直接 hex 或 rgb()
+  if(bg.startsWith('#'))return bg;
+  const m=bg.match(/\d+/g);return rgbToHex(+m[0],+m[1],+m[2]);
+}
+
+/* ===== 设备切换 ===== */
+document.getElementById('deviceSeg').addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON')return;
+  document.querySelectorAll('#deviceSeg button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  const dev=e.target.dataset.dev;
+  const d=document.getElementById('device');
+  d.className='device '+dev;
+});
+
+/* ===== 导航 ===== */
+function go(screen){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(screen).classList.add('active');
+  document.querySelectorAll('#botnav button, #rail button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.screen===screen);
+  });
+  // 进入法规列表时拉取内容
+  if(screen==='lawlist'){renderLawList();}
+  closeDrawer();
+}
+document.querySelectorAll('#botnav button, #rail button').forEach(b=>{
+  b.onclick=()=>go(b.dataset.screen);
+});
+
+/* ===== 抽屉 ===== */
+function openDrawer(type){
+  const dl=document.getElementById('drawerList');
+  const di=document.getElementById('drawerIc'), dt=document.getElementById('drawerTitle');
+  if(type==='toc'){
+    di.textContent='📑';dt.textContent='本章目录';
+    dl.innerHTML=drawerItems([
+      ['第二节 犯罪的预备、未遂和中止','当前'],
+      ['第三节 共同犯罪'],['第四节 单位犯罪'],['第三章 刑罚','—'],['第四章 刑罚的具体运用','—']
+    ],'📄');
+  }else{
+    di.textContent='📚';dt.textContent='分类导航';
+    dl.innerHTML=drawerItems(CATEGORIES.map(c=>[c.t,c.c]),'📁');
+  }
+  document.getElementById('drawer').classList.add('show');
+  document.getElementById('drawerScrim').classList.add('show');
+}
+function drawerItems(arr,ic){
+  return arr.map((it,i)=>`<div class="item" onclick="closeDrawer()"><div class="lead">${ic}</div><div class="body"><div class="t">${it[0]}</div><div class="s">${it[1]}</div></div></div>`).join('');
+}
+function closeDrawer(){document.getElementById('drawer').classList.remove('show');document.getElementById('drawerScrim').classList.remove('show');}
+
+/* ===== 底部抽屉 ===== */
+function openSheet(){document.getElementById('sheet').classList.add('show');document.getElementById('sheetScrim').classList.add('show');}
+function closeSheet(){document.getElementById('sheet').classList.remove('show');document.getElementById('sheetScrim').classList.remove('show');}
+
+/* ===== 数据 ===== */
+const CATEGORIES=[
+  {t:'宪法',c:'根本法',ic:'🛡️'},
+  {t:'刑法',c:'290 条',ic:'⚖️'},
+  {t:'民法',c:'民法典',ic:'📜'},
+  {t:'行政法',c:'86 部',ic:'🏛️'},
+  {t:'经济法',c:'商经法',ic:'💼'},
+  {t:'诉讼法',c:'程序法',ic:'📋'},
+  {t:'劳动法',c:'29 部',ic:'🤝'},
+  {t:'国际法',c:'条约',ic:'🌐'},
+];
+const LAWS=[
+  ['中华人民共和国刑法','主席令 第 30 号 · 2024 修正','⚖️'],
+  ['中华人民共和国民法典','主席令 第 45 号','📜'],
+  ['中华人民共和国劳动合同法','主席令 第 65 号','🤝'],
+  ['中华人民共和国行政处罚法','主席令 第 70 号','🏛️'],
+  ['中华人民共和国刑事诉讼法','主席令 第 10 号','📋'],
+  ['中华人民共和国公司法','主席令 第 15 号 · 2024','💼'],
+];
+const SEARCH=[
+  ['民法典 · 第 181 条','正当防卫 · 不负刑事责任','📜'],
+  ['刑法 · 第 20 条','正当防卫（最新修正）','⚖️'],
+  ['最高人民法院关于适用…','正当防卫指导意见','📋'],
+  ['治安管理处罚法 · 第 43 条','殴打他人 · 防卫过当','🏛️'],
+];
+const FAV=[
+  ['刑法 · 第 232 条','故意杀人罪','⭐'],
+  ['民法典 · 第 1043 条','婚姻家庭道德规范','⭐'],
+  ['劳动合同法 · 第 47 条','经济补偿计算','⭐'],
+];
+
+/* ===== 渲染 ===== */
+function renderGrid(){
+  document.getElementById('catGrid').innerHTML=CATEGORIES.map(c=>
+    `<div class="cat-card" onclick="go('lawlist')"><div class="cat-ic">${c.ic}</div><div class="t">${c.t}</div><div class="c">${c.c}</div></div>`).join('');
+  document.getElementById('homeList').innerHTML=LAWS.map(l=>
+    `<div class="item" onclick="go('reader')"><div class="lead">${l[2]}</div><div class="body"><div class="t">${l[0]}</div><div class="s">${l[1]}</div></div><div class="trail">›</div></div>`).join('');
+  document.getElementById('lawListItems').innerHTML=LAWS.map(l=>
+    `<div class="item" onclick="go('reader')"><div class="lead">${l[2]}</div><div class="body"><div class="t">${l[0]}</div><div class="s">${l[1]}</div></div><span class="trail bookmarked">🔖</span></div>`).join('');
+  document.getElementById('searchList').innerHTML=SEARCH.map(l=>
+    `<div class="item" onclick="go('reader')"><div class="lead">${l[2]}</div><div class="body"><div class="t">${l[0]}</div><div class="s">${l[1]}</div></div><div class="trail">›</div></div>`).join('');
+  document.getElementById('favList').innerHTML=FAV.map(l=>
+    `<div class="item" onclick="go('reader')"><div class="lead">${l[2]}</div><div class="body"><div class="t">${l[0]}</div><div class="s">${l[1]}</div></div><div class="trail">›</div></div>`).join('');
+}
+function renderLawList(){ /* 已在渲染时填充 */ }
+
+function switchFav(t){
+  document.querySelectorAll('#fav .seg-btns button').forEach((b,i)=>b.classList.toggle('active',(t==='fav'&&i===0)||(t==='his'&&i===1)));
+  document.getElementById('favList').innerHTML = t==='fav'? FAV.map(l=>
+    `<div class="item" onclick="go('reader')"><div class="lead">${l[2]}</div><div class="body"><div class="t">${l[0]}</div><div class="s">${l[1]}</div></div><div class="trail">›</div></div>`).join('')
+    : ['宪法','刑法','民法典','行政法'].map(x=>`<div class="item" onclick="go('reader')"><div class="lead">🕘</div><div class="body"><div class="t">${x}</div><div class="s">2 小时前浏览</div></div><div class="trail">›</div></div>`).join('');
+}
+let toastTimer;
+function toast(msg){
+  let t=document.getElementById('__toast');
+  if(!t){t=document.createElement('div');t.id='__toast';t.style.cssText='position:absolute;left:50%;bottom:120px;transform:translateX(-50%);background:var(--inverse-surface);color:var(--inverse-on-surface);padding:10px 18px;border-radius:var(--shape-full);font-size:13px;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:.2s;';document.querySelector('.screen-wrap').appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.opacity='0',1600);
+}
+
+renderGrid();
+applyPalette('#6750A4');
+</script>
+</body>
+</html>

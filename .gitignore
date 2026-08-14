@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+*/build/
+
+# Android / IDE
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 数据散目录（由 scripts/prepare_assets.py 生成；仅打包 assets/laws.zip 进 APK，不入库）
+app/src/main/assets/Laws/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.log

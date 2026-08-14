@@ -199,6 +199,7 @@ app/src/main/java/com/lawrefbook/unified/
 | App 升级携带新 laws.zip 时旧数据不刷新 | `LawDataManager` 解压版本戳 |
 | 首页「最近浏览」点击跳检索页而非法规 | 改为深链 `reader/{lawId}` |
 | 主题默认色不一致（首帧闪色）、字号范围不一致、数据版本显示不更新等 | 统一默认值 / 显示实际更新时间 |
+| 长按选择放大镜内容与手指位置严重错位（自研 loupe 的 graphicsLayer 缺 `transformOrigin`，偏移随文本宽度可达数百 px） | 改用 **Jetpack Compose 官方 `Modifier.magnifier`**（`android.widget.Magnifier` 封装：自动悬浮跟随、越界夹紧、平台级内容对齐），保留自研选区高亮/边界手柄/复制分享 |
 | 单元测试无法编译/失败（方法名含 `/`、测试输入与真实数据格式不符） | 修复 + 新增回归测试 |
 
 ## License

@@ -6,9 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -40,16 +41,6 @@ import androidx.compose.ui.unit.dp
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.unit.IntOffset
 
 /** 进入选区模式所需的长按阈值（毫秒） */
 private const val SELECT_LONG_PRESS_MS = 200L
@@ -66,15 +57,6 @@ private const val HANDLE_LINE_DP = 16f
 /** 边界手柄竖线线宽（dp） */
 private const val HANDLE_STROKE_DP = 2f
 
-/** 放大镜镜片半径（dp） */
-private const val LOUPE_RADIUS_DP = 34f
-/** 放大镜缩放倍数 */
-private const val LOUPE_ZOOM = 1.8f
-/** 放大镜中心相对手指的上移距离（dp），使镜片悬浮于手指上方 */
-private const val LOUPE_OFFSET_ABOVE_DP = 24f
-/** 正文内边距（dp），用于把指针坐标换算到文本内容坐标 */
-private const val TEXT_PADDING_DP = 8f
-
 /** 长按确认震动时长（毫秒） */
 private const val HAPTIC_DURATION_MS = 30L
 /** 长按确认震动强度（0–255，取中值偏柔，强度适中） */
@@ -90,8 +72,12 @@ private const val HAPTIC_AMPLITUDE = 45
  * - 高亮以半透明色块覆盖选中字符范围，并在起、止字符处绘制对称边界手柄：左侧圆点贴顶部原点正下方并向下延伸竖线、右侧圆点贴底部并向上延伸竖线，两者镜像对应；
  * - **拖动手柄**：按下时若命中某个边界圆点，则进入「调整该端点」模式，仅移动对应端点、
  *   保留另一端，拖动过程中高亮稳定保留、不会自动消失；
- * - 进入选区瞬间触发**设备震动反馈**（短促、强度适中）并弹出**放大镜**：镜片实时放大手指下方区域、跟随手指移动，
- *   内部绘制与正文一致的高亮与对称边界手柄，并以中心十字标记当前选中的字符位置；
+ * - 进入选区瞬间触发**设备震动反馈**（短促、强度适中）；
+ * - **放大镜**：使用 Jetpack Compose 官方 `Modifier.magnifier`（androidx.compose.foundation，
+ *   内部为 android.widget.Magnifier 封装）——长按/拖动时实时放大手指下方文本、自动悬浮于
+ *   手指上方并跟随移动、越界自动夹紧，彻底替代早期自实现的 loupe 贴图（其缩放原点缺失
+ *   transformOrigin 导致镜内内容与手指严重错位）。
+ *   通过把 [loupePos] 置为 `Offset.Unspecified` 控制隐藏，置为手指位置控制显示与跟随；
  * - 松开后保留选区并**立即弹出上下文菜单**，提供「复制」与「分享」；
  * - 在已有选区上短按正文（未命中手柄、未达阈值即抬起）会清除选区；
  * - 进入选区前不消费指针事件，因此与 LazyColumn 滚动、普通短按均无冲突。
@@ -114,8 +100,9 @@ fun SelectableText(
     var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     var selection by remember { mutableStateOf<IntRange?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
-    var loupePos by remember { mutableStateOf<Offset?>(null) }
-    var loupeVisible by remember { mutableStateOf(false) }
+    // 放大镜锚点（元素局部坐标）。Offset.Unspecified = 隐藏放大镜；
+    // 官方 Modifier.magnifier 每帧读取它并自动完成 屏幕坐标换算/悬浮/跟随/夹紧。
+    var loupePos by remember { mutableStateOf(Offset.Unspecified) }
 
     val highlightColor = MaterialTheme.colorScheme.primary
     val handleColor = MaterialTheme.colorScheme.primary
@@ -228,8 +215,7 @@ fun SelectableText(
                                     if (!change.pressed) {
                                         // 抬起：隐藏放大镜；已进入选区（含手柄调整）→ 重新弹出菜单；
                                         // 仅短按正文且已有选区 → 清除
-                                        loupeVisible = false
-                                        loupePos = null
+                                        loupePos = Offset.Unspecified
                                         if (activated) {
                                             menuExpanded = true
                                         } else if (selection != null) {
@@ -260,9 +246,8 @@ fun SelectableText(
                                             // 不拖动也给出「所在句子」内容，保证菜单有可用文本
                                             selection = sentenceRange(text, dragAnchor)
                                             change.consume()
-                                            // 触觉反馈 + 显示放大镜
+                                            // 触觉反馈 + 显示放大镜（官方 magnifier 悬浮于手指上方并跟随）
                                             vibrateConfirm(context)
-                                            loupeVisible = true
                                             loupePos = pressPos
                                         }
                                     } else {
@@ -273,96 +258,21 @@ fun SelectableText(
                                         val dragged = (change.position - pressPos).getDistance() > viewConfiguration.touchSlop
                                         if (dragged) {
                                             selection = IntRange(dragAnchor, off)
-                                            loupePos = change.position
                                         }
+                                        loupePos = change.position
                                         change.consume()
                                     }
                                 }
                             }
                         }
                     }
+                    // 官方放大镜：sourceCenter/magnifierCenter 均为元素局部坐标
+                    // （节点内部自动换算到屏幕），loupePos=Unspecified 时隐藏。
+                    .magnifier(
+                        sourceCenter = { loupePos },
+                        magnifierCenter = { loupePos }
+                    )
             )
-
-            // 放大镜：长按时跟随手指，放大手指下方区域并标示当前选中范围
-            val loupeLayout = textLayout
-            val loupeSel = selection
-            val lp = loupePos
-            if (loupeVisible && lp != null && loupeLayout != null && loupeSel != null) {
-                val ls = minOf(loupeSel.first, loupeSel.last)
-                val le = maxOf(loupeSel.first, loupeSel.last)
-                if (le > ls) {
-                    val ld = density
-                    val rPx = LOUPE_RADIUS_DP * ld
-                    val rDp = LOUPE_RADIUS_DP.dp
-                    val zoom = LOUPE_ZOOM
-                    val pad = TEXT_PADDING_DP * ld
-                    val off = loupeLayout.getOffsetForPosition(Offset(lp.x - pad, lp.y - pad)).coerceIn(0, text.length)
-                    val p = loupeLayout.getCursorRect(off).center
-                    val contentW = loupeLayout.size.width
-                    Box(
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .offset { IntOffset((lp.x - rPx).toInt(), (lp.y - rPx - LOUPE_OFFSET_ABOVE_DP * ld).toInt()) }
-                            .size(rDp * 2)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.97f))
-                            .border(BorderStroke(1.5.dp, handleColor))
-                    ) {
-                        Text(
-                            text = text,
-                            style = style,
-                            softWrap = true,
-                            modifier = Modifier
-                                .requiredWidth((contentW / ld).dp)
-                                .graphicsLayer {
-                                    scaleX = zoom
-                                    scaleY = zoom
-                                    translationX = rPx - p.x * zoom
-                                    translationY = rPx - p.y * zoom
-                                }
-                                .drawWithContent {
-                                    val ss = if (loupeSel.first <= loupeSel.last) loupeSel.first else loupeSel.last
-                                    val ee = if (loupeSel.first <= loupeSel.last) loupeSel.last else loupeSel.first
-                                    if (ee > ss) {
-                                        for (rr in selectionRects(loupeLayout, ss, ee)) {
-                                            drawRect(
-                                                color = highlightColor,
-                                                topLeft = Offset(rr.left, rr.top),
-                                                size = Size(rr.width, rr.height),
-                                                alpha = 0.26f
-                                            )
-                                        }
-                                        val hr = HANDLE_DOT_RADIUS_DP * ld
-                                        val hline = HANDLE_LINE_DP * ld
-                                        val hstroke = HANDLE_STROKE_DP * ld
-                                        val stR = loupeLayout.getCursorRect(ss)
-                                        val enR = loupeLayout.getCursorRect(ee)
-                                        val lX = stR.left
-                                        val lY = stR.top + hr
-                                        drawLine(color = handleColor, start = Offset(lX, lY), end = Offset(lX, lY + hline), strokeWidth = hstroke)
-                                        drawCircle(color = handleColor, radius = hr, center = Offset(lX, lY))
-                                        val rX = enR.left
-                                        val rY = enR.bottom - hr
-                                        drawLine(color = handleColor, start = Offset(rX, rY - hline), end = Offset(rX, rY), strokeWidth = hstroke)
-                                        drawCircle(color = handleColor, radius = hr, center = Offset(rX, rY))
-                                    }
-                                    drawContent()
-                                }
-                        )
-                        // 中心十字标记：明确标示当前选中的字符位置
-                        Canvas(Modifier.fillMaxSize()) {
-                            val c = rPx
-                            drawLine(
-                                color = handleColor,
-                                start = Offset(c, c - 9.dp.toPx()),
-                                end = Offset(c, c + 9.dp.toPx()),
-                                strokeWidth = 2.dp.toPx()
-                            )
-                            drawCircle(color = handleColor, radius = 3.dp.toPx(), center = Offset(c, c))
-                        }
-                    }
-                }
-            }
 
             val selBounds = selection?.let { sel ->
                 val s = if (sel.first <= sel.last) sel.first else sel.last
@@ -405,11 +315,12 @@ fun SelectableText(
  * 若附近无终止标点（如纯条号或整段无标点），返回整段范围。
  */
 private fun sentenceRange(text: String, idx: Int): IntRange {
-    if (idx <= 0 || idx >= text.length) return IntRange(0, text.length)
+    if (text.isEmpty()) return IntRange(0, 0)
+    val clamped = idx.coerceIn(0, text.length - 1)
     val stops = setOf('。', '！', '？', '；', '：', '\n', '.', '!', '?', ';', ':')
-    var start = idx
+    var start = clamped
     while (start > 0 && !stops.contains(text[start - 1])) start--
-    var end = idx
+    var end = clamped
     while (end < text.length && !stops.contains(text[end])) end++
     if (end < text.length) end++ // 包含终止符
     return IntRange(start, end)

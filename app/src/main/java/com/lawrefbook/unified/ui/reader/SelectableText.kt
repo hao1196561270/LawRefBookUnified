@@ -3,27 +3,32 @@ package com.lawrefbook.unified.ui.reader
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -31,17 +36,26 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import kotlin.math.roundToInt
 
 /** 进入选区模式所需的长按阈值（毫秒） */
 private const val SELECT_LONG_PRESS_MS = 200L
@@ -308,58 +322,78 @@ fun SelectableText(
                 if (e > s) s to e else null
             }
 
-            // 菜单跟随选区：计算选区包围盒相对 Box 左上角的位置（文本有 8dp 内边距需补偿），
-            // 作为 DropdownMenu 的 offset，使「复制/分享」菜单出现在选区下方而不是固定在左上角。
+            // 菜单智能跟随选区：计算选区包围盒相对 Box 的位置（文本有 8dp 内边距需补偿），
+            // 由 SelectionMenuPositionProvider 根据屏幕可用空间把菜单放在选区「左上方或右上方」，
+            // 且始终不遮挡选区（上方放不下时放下方）。
             val localDensity = LocalDensity.current
-            val menuOffset = remember(selection, textLayout) {
+            val selRectInBox = remember(selection, textLayout) {
                 val sel = selection
                 val layout = textLayout
                 if (sel == null || layout == null) {
-                    DpOffset.Zero
+                    null
                 } else {
                     val s = minOf(sel.first, sel.last)
                     val e = maxOf(sel.first, sel.last)
                     val rects = selectionRects(layout, s, e)
                     if (rects.isEmpty()) {
-                        DpOffset.Zero
+                        null
                     } else {
                         val minX = rects.minOf { it.left }
+                        val minY = rects.minOf { it.top }
+                        val maxX = rects.maxOf { it.right }
                         val maxY = rects.maxOf { it.bottom }
                         with(localDensity) {
-                            DpOffset(
-                                x = (minX + 8.dp.toPx()).toDp(),
-                                y = (maxY + 8.dp.toPx()).toDp()
+                            Rect(
+                                left = minX + 8.dp.toPx(),
+                                top = minY + 8.dp.toPx(),
+                                right = maxX + 8.dp.toPx(),
+                                bottom = maxY + 8.dp.toPx()
                             )
                         }
                     }
                 }
             }
-            DropdownMenu(
-                expanded = menuExpanded && selBounds != null,
-                offset = menuOffset,
-                onDismissRequest = {
-                    // 仅收起菜单，不清除选区：保证手柄始终可抓、高亮持续保留
-                    menuExpanded = false
+            if (menuExpanded && selBounds != null && selRectInBox != null) {
+                Popup(
+                    onDismissRequest = {
+                        // 仅收起菜单，不清除选区：保证手柄始终可抓、高亮持续保留
+                        menuExpanded = false
+                    },
+                    popupPositionProvider = remember(selRectInBox, localDensity) {
+                        SelectionMenuPositionProvider(selRectInBox, localDensity)
+                    },
+                    properties = PopupProperties(focusable = true)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 8.dp,
+                        tonalElevation = 8.dp
+                    ) {
+                        // 菜单项与首页搜索框同款间距：文字↔边框 16dp/12dp、图标↔文字 12dp，
+                        // 宽度紧贴内容（不用 DropdownMenuItem 的 112dp 最小宽度）
+                        Column {
+                            MenuActionRow(
+                                icon = Icons.Filled.ContentCopy,
+                                label = "复制",
+                                onClick = {
+                                    selBounds.let { (s, e) -> onCopy(text.substring(s, e)) }
+                                    menuExpanded = false
+                                    selection = null
+                                }
+                            )
+                            MenuActionRow(
+                                icon = Icons.Filled.Share,
+                                label = "分享",
+                                onClick = {
+                                    selBounds.let { (s, e) -> shareText(context, text.substring(s, e)) }
+                                    menuExpanded = false
+                                    selection = null
+                                }
+                            )
+                        }
+                    }
                 }
-            ) {
-                DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Filled.ContentCopy, contentDescription = null) },
-                    text = { Text("复制") },
-                    onClick = {
-                        selBounds?.let { (s, e) -> onCopy(text.substring(s, e)) }
-                        menuExpanded = false
-                        selection = null
-                    }
-                )
-                DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
-                    text = { Text("分享") },
-                    onClick = {
-                        selBounds?.let { (s, e) -> shareText(context, text.substring(s, e)) }
-                        menuExpanded = false
-                        selection = null
-                    }
-                )
             }
         }
     }
@@ -402,6 +436,87 @@ private fun shareText(context: Context, text: String) {
         context.startActivity(Intent.createChooser(intent, "分享法条"))
     } catch (_: Exception) {
         // 无可用分享目标时静默忽略
+    }
+}
+
+/**
+ * 菜单操作行：与首页搜索框同款间距（文字↔边框 16dp/12dp、图标↔文字 12dp），
+ * 点击区域覆盖整行。
+ */
+@Composable
+private fun MenuActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/**
+ * 「复制/分享」菜单的位置计算器：让菜单**智能跟随选区**且**不遮挡选区**。
+ *
+ * - 垂直：优先放在选区**上方**（菜单底边贴选区顶边、留 8dp 间隙）；若上方空间不足（选区贴近屏幕顶部），
+ *   自动放到选区下方（菜单顶边贴选区底边）。
+ * - 水平：优先放在选区**左上角**（菜单右缘贴选区左缘、留 8dp 间隙，即菜单位于选区左上方）；
+ *   若左侧空间不足（选区贴近屏幕左缘），智能切换到选区**右上角**（菜单左缘贴选区右缘）。
+ * - 最终结果整体夹紧在屏幕内（coerceIn），保证菜单完整可见。
+ *
+ * @param selectionRect 选区包围盒（相对锚点 Box 的局部像素坐标）
+ * @param density       用于 dp→px 的间隙换算
+ */
+private class SelectionMenuPositionProvider(
+    private val selectionRect: Rect,
+    private val density: Density,
+) : PopupPositionProvider {
+
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize
+    ): IntOffset {
+        val gap = with(density) { 8.dp.toPx() }.roundToInt()
+        val menuW = popupContentSize.width
+        val menuH = popupContentSize.height
+
+        // 选区在屏幕上的位置（anchorBounds 即锚点 Box 的屏幕边界）
+        val selLeft = anchorBounds.left + selectionRect.left.roundToInt()
+        val selTop = anchorBounds.top + selectionRect.top.roundToInt()
+        val selRight = anchorBounds.left + selectionRect.right.roundToInt()
+        val selBottom = anchorBounds.top + selectionRect.bottom.roundToInt()
+
+        // 垂直：优先上方（不遮挡选区），上方空间不足则放下方
+        val y = if (selTop - menuH - gap >= 0) {
+            selTop - menuH - gap
+        } else {
+            (selBottom + gap).coerceAtMost((windowSize.height - menuH).coerceAtLeast(0))
+        }
+
+        // 水平：智能选「左上角」或「右上角」（避开选区，不遮挡）
+        val x = if (selLeft - menuW - gap >= 0) {
+            // 左上角：菜单在选区左上方，右缘贴选区左缘
+            selLeft - menuW - gap
+        } else {
+            // 右上角：菜单在选区右上方，左缘贴选区右缘（右侧也不够时夹紧到屏幕右缘）
+            (selRight + gap).coerceAtMost((windowSize.width - menuW).coerceAtLeast(0))
+        }
+
+        return IntOffset(x.coerceAtLeast(0), y.coerceAtLeast(0))
     }
 }
 

@@ -48,6 +48,8 @@ import com.lawrefbook.unified.ui.search.SearchScreen
 import com.lawrefbook.unified.ui.settings.SettingsScreen
 import com.lawrefbook.unified.ui.settings.AboutScreen
 import com.lawrefbook.unified.ui.settings.ThemeSettingsScreen
+import com.lawrefbook.unified.ui.settings.ReaderSettingsScreen
+import com.lawrefbook.unified.ui.settings.DataSettingsScreen
 
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "首页", Icons.Filled.Home)
@@ -134,6 +136,8 @@ private fun AppNavHost(nav: NavHostController, modifier: Modifier = Modifier) {
         composable(Screen.History.route) { HistoryScreen(nav) }
         composable(Screen.Settings.route) { SettingsScreen(nav) }
         composable("theme_settings") { ThemeSettingsScreen(nav) }
+        composable("reader_settings") { ReaderSettingsScreen(nav) }
+        composable("data_settings") { DataSettingsScreen(nav) }
         composable("about") { AboutScreen(nav) }
         composable(
             route = "lawlist/{categoryId}",

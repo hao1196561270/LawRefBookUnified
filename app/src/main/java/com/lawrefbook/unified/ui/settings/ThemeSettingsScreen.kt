@@ -23,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -59,9 +58,6 @@ fun ThemeSettingsScreen(nav: NavHostController) {
     val dark by settings.darkMode.collectAsState(initial = false)
     val dynamic by settings.dynamicColor.collectAsState(initial = true)
     val seed by settings.themeSeed.collectAsState(initial = 0xFF6750A4L)
-    val fontSize by settings.fontSize.collectAsState(initial = 17f)
-    val lineSpacing by settings.lineSpacing.collectAsState(initial = 1.5f)
-    val articleSpacing by settings.articleSpacing.collectAsState(initial = 8f)
 
     Scaffold(
         topBar = {
@@ -138,13 +134,6 @@ fun ThemeSettingsScreen(nav: NavHostController) {
                     modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 8.dp)
                 )
             }
-
-            item { SectionTitle("阅读") }
-            item {
-                SliderItem("正文字号", fontSize, 12f..28f) { scope.launch { settings.setFontSize(it) } }
-                SliderItem("行距", lineSpacing, 1f..2.5f) { scope.launch { settings.setLineSpacing(it) } }
-                SliderItem("法条间距", articleSpacing, 0f..24f) { scope.launch { settings.setArticleSpacing(it) } }
-            }
         }
     }
 }
@@ -178,20 +167,4 @@ private fun SettingSwitchItem(
         },
         trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) }
     )
-}
-
-@Composable
-private fun SliderItem(
-    label: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onChanged: (Float) -> Unit
-) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(
-            "$label：${String.format("%.1f", value)}",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Slider(value = value, onValueChange = onChanged, valueRange = range, steps = 0)
-    }
 }

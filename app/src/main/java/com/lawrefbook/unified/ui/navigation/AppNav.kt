@@ -56,7 +56,8 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
     object Settings : Screen("settings", "设置", Icons.Filled.Settings)
 }
 
-private val topLevel = listOf(Screen.Home, Screen.Search, Screen.Favorites, Screen.History, Screen.Settings)
+// 底部导航栏（含宽屏侧栏）：仅保留 4 项。检索入口已移至首页顶部搜索框。
+private val topLevel = listOf(Screen.Home, Screen.Favorites, Screen.History, Screen.Settings)
 
 @Composable
 fun AppNav() {

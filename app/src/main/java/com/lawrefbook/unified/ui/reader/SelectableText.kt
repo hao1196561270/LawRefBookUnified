@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import android.os.Build
 import android.os.VibrationEffect
@@ -306,8 +307,36 @@ fun SelectableText(
                 val e = if (sel.first <= sel.last) sel.last else sel.first
                 if (e > s) s to e else null
             }
+
+            // 菜单跟随选区：计算选区包围盒相对 Box 左上角的位置（文本有 8dp 内边距需补偿），
+            // 作为 DropdownMenu 的 offset，使「复制/分享」菜单出现在选区下方而不是固定在左上角。
+            val localDensity = LocalDensity.current
+            val menuOffset = remember(selection, textLayout) {
+                val sel = selection
+                val layout = textLayout
+                if (sel == null || layout == null) {
+                    DpOffset.Zero
+                } else {
+                    val s = minOf(sel.first, sel.last)
+                    val e = maxOf(sel.first, sel.last)
+                    val rects = selectionRects(layout, s, e)
+                    if (rects.isEmpty()) {
+                        DpOffset.Zero
+                    } else {
+                        val minX = rects.minOf { it.left }
+                        val maxY = rects.maxOf { it.bottom }
+                        with(localDensity) {
+                            DpOffset(
+                                x = (minX + 8.dp.toPx()).toDp(),
+                                y = (maxY + 8.dp.toPx()).toDp()
+                            )
+                        }
+                    }
+                }
+            }
             DropdownMenu(
                 expanded = menuExpanded && selBounds != null,
+                offset = menuOffset,
                 onDismissRequest = {
                     // 仅收起菜单，不清除选区：保证手柄始终可抓、高亮持续保留
                     menuExpanded = false

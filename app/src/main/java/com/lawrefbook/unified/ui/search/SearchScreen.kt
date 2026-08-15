@@ -227,11 +227,12 @@ fun SearchScreen(nav: NavHostController) {
                         ) {
                             recentSearches.forEach { r ->
                                 Box(
-                                    Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                                    // 长方形 chip：6dp 小圆角、水平 10dp / 垂直 5dp 空隙、32dp 高
+                                    Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.secondaryContainer)
                                         .clickable { keyword = r; runSearch() }
-                                        .defaultMinSize(minHeight = 48.dp)
-                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                        .defaultMinSize(minHeight = 32.dp)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
                                 ) {
                                     Text(r, color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.labelLarge)
                                 }

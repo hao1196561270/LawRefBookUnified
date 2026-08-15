@@ -28,8 +28,22 @@ interface FavoritesDao {
 
 @Dao
 interface HistoryDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entity: HistoryEntity)
+    /**
+     * 写入/更新历史行：已存在时只刷新 lawName/lastRead，
+     * **保留 scrollIndex/scrollOffset 阅读进度**（不能整行 REPLACE，否则会清掉进度）。
+     */
+    @Query(
+        "INSERT INTO history (lawId, lawName, lastRead) VALUES (:lawId, :lawName, :lastRead) " +
+        "ON CONFLICT(lawId) DO UPDATE SET lawName = excluded.lawName, lastRead = excluded.lastRead"
+    )
+    suspend fun upsert(lawId: String, lawName: String, lastRead: Long)
+
+    /** 更新阅读进度（不动 lastRead，避免“继续阅读”排序被打乱）。 */
+    @Query("UPDATE history SET scrollIndex = :index, scrollOffset = :offset WHERE lawId = :lawId")
+    suspend fun updateScroll(lawId: String, index: Int, offset: Int)
+
+    @Query("SELECT * FROM history WHERE lawId = :lawId")
+    suspend fun getByLawId(lawId: String): HistoryEntity?
 
     @Query("SELECT * FROM history ORDER BY lastRead DESC LIMIT 100")
     fun getAll(): Flow<List<HistoryEntity>>

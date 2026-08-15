@@ -9,7 +9,7 @@ import android.content.Context
 
 @Database(
     entities = [FavoritesEntity::class, HistoryEntity::class, LawItemEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class LawDatabase : RoomDatabase() {
@@ -28,6 +28,14 @@ abstract class LawDatabase : RoomDatabase() {
             }
         }
 
+        /** history 增加阅读进度字段（继续阅读恢复位置）。 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE history ADD COLUMN scrollIndex INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE history ADD COLUMN scrollOffset INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var INSTANCE: LawDatabase? = null
 
@@ -37,7 +45,7 @@ abstract class LawDatabase : RoomDatabase() {
                     context.applicationContext,
                     LawDatabase::class.java,
                     "lawrefbook_user.db"
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
     }
 }

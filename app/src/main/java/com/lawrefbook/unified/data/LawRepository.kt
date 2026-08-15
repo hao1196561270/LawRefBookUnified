@@ -119,7 +119,16 @@ class LawRepository(private val context: Context) {
 
     // ---- 历史 ----
     suspend fun addHistory(entity: HistoryEntity) = withContext(Dispatchers.IO) {
-        db.historyDao().upsert(entity)
+        db.historyDao().upsert(entity.lawId, entity.lawName, entity.lastRead)
+    }
+
+    /** 保存阅读进度（LazyColumn 首个可见项索引 + 像素偏移），供“继续阅读”恢复。 */
+    suspend fun saveScrollPos(lawId: String, index: Int, offset: Int) = withContext(Dispatchers.IO) {
+        db.historyDao().updateScroll(lawId, index, offset)
+    }
+
+    suspend fun getHistory(lawId: String): HistoryEntity? = withContext(Dispatchers.IO) {
+        db.historyDao().getByLawId(lawId)
     }
 
     fun historyFlow(): Flow<List<HistoryEntity>> = db.historyDao().getAll()

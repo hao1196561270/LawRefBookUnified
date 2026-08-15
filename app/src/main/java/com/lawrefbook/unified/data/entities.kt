@@ -22,7 +22,10 @@ data class FavoritesEntity(
 data class HistoryEntity(
     @PrimaryKey val lawId: String,
     val lawName: String,
-    val lastRead: Long = System.currentTimeMillis()
+    val lastRead: Long = System.currentTimeMillis(),
+    // 阅读进度：LazyColumn 的首个可见项索引与像素偏移（用于“继续阅读”恢复位置）
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
 @Entity(tableName = "law_item")

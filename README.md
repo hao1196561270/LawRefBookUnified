@@ -14,9 +14,9 @@
 
 ## 功能
 
-- **分类浏览**：宪法、刑法、民法典、法律、行政法规、司法解释、部门规章、司法案例等分类下钻到具体法规。
+- **分类浏览**：首页顶部常驻搜索框，下方 **3 列网格一屏全量展示全部 23 个法律分类**（宪法、刑法、民法典、行政法、经济法、司法解释、部门规章等），点击下钻到具体法规；底部导航保留 **首页 / 收藏 / 历史 / 设置** 四项（检索入口已并入首页搜索框）。
 - **法条阅读**：解析后的嵌套目录树 + 条文卡片，章节抽屉快速跳转；支持自定义字号、行距、法条间距、深色模式、主题色（Material You 动态配色）。
-- **全文检索**：对任意中文关键词（含 2 字）做子串检索（精确/模糊两种模式），支持按分类、效力层级、发布时间筛选与多字段排序，结果高亮并**深链到具体条文**。
+- **全文检索**：对任意中文关键词（含 2 字）做子串检索（精确/模糊两种模式），支持按分类、效力层级、发布时间筛选与多字段排序，结果高亮并**深链到具体条文**；首页 / 搜索页均有真实搜索历史记录（DataStore 持久化，最近 10 条）。
 - **收藏**：按条文收藏、删除，支持**分类整理**（按分类筛选 + 编辑条目分类）；**历史**：最近浏览（最多 100 条，自动记住阅读进度）。
 - **阅读进度记忆**：退出后再次进入同一部法规，自动回到上次阅读位置（滚动位置防抖持久化）。
 - **文本选择**：阅读页长按选词，拖动手柄精确调整选区，实时放大镜 + 触觉反馈，支持复制 / 系统分享。
@@ -59,7 +59,7 @@ adb install -r app/build/outputs/apk/debug/FatiaoTong-debug.apk
 adb shell am start -n com.lawrefbook.unified/.MainActivity
 ```
 
-> 已在真机（OPPO PLQ110 / Android 14）验证：首次启动自动解压数据、后台构建检索索引（74,326 条 / 1688 部法规）、无崩溃。
+> 已在真机（OPPO PLQ110 / Android 16，无线调试 adb）验证：首次启动自动解压数据、后台构建检索索引（74,326 条 / 1688 部法规）、首页 23 分类 3 列网格全量展示、底部导航 4 项、无崩溃。
 
 ---
 
@@ -93,7 +93,8 @@ adb shell am start -n com.lawrefbook.unified/.MainActivity
 │ UI 层（Jetpack Compose）                        │
 │  HomeScreen / LawListScreen / ReaderScreen      │
 │  SearchScreen / FavoritesScreen / HistoryScreen │
-│  SettingsScreen（AppNav 路由 + 底部导航/导轨）     │
+│  SettingsScreen / ThemeSettingsScreen            │
+│  （AppNav 路由 + 底部导航 4 项 / 宽屏导轨）        │
 └───────────────┬───────────────────────────────┘
                 │ 经 MyApplication 取得
 ┌───────────────┴───────────────────────────────┐
@@ -120,8 +121,8 @@ adb shell am start -n com.lawrefbook.unified/.MainActivity
 ### 关键流程
 
 - **首次启动**：`MyApplication.onCreate` 后台解压 `laws.zip` → 遍历全部法规解析 Markdown → 写入 `law_item` 检索索引（一次性，版本戳 `search_index_version` 标记，递增即重建）
-- **阅读**：`HomeScreen → LawListScreen(categoryId) → ReaderScreen(lawId[, article])`；进入写历史，深链条文高亮
-- **检索**：`SearchScreen → repo.search(SearchQuery)` → SQL 子串匹配 + 筛选 → 内存排序 → 深链跳转
+- **阅读**：`HomeScreen（分类 3 列网格）→ LawListScreen(categoryId) → ReaderScreen(lawId[, article])`；进入写历史，深链条文高亮
+- **检索**：首页顶部搜索框 / 检索页 `SearchScreen → repo.search(SearchQuery)` → SQL 子串匹配 + 筛选 → 内存排序 → 深链跳转
 - **更新**：`MonthlyUpdateWorker`（每 30 天、仅非计费网络）→ `UpdateRepository` 比对上游 commit SHA → 下载 zip 解压覆盖（自动处理 GitHub 归档 zip 的顶层目录前缀）
 
 ---
@@ -172,14 +173,17 @@ app/src/main/java/com/lawrefbook/unified/
 │   ├── parser/LawParser.kt         # 纯函数：Markdown 法条解析（标题嵌套/条文拆分/段落保留）
 │   ├── daos.kt / entities.kt       # Room DAO 与实体（LIKE 检索）
 │   ├── model/LawModels.kt          # 领域模型
+│   ├── search/SearchSpec.kt          # 检索规格（精确/模糊 + 筛选 + 排序）
 │   ├── settings/SettingsRepository.kt  # DataStore 设置 + 数据版本/更新状态
 │   └── update/
 │       ├── UpdateRepository.kt     # 检查上游提交 / 下载并同步最新内容
 │       └── MonthlyUpdateWorker.kt  # WorkManager 月度周期任务
 ├── ui/
 │   ├── theme/Theme.kt              # M3 主题（深色 + 动态配色 + 自定义主色）
-│   ├── navigation/AppNav.kt        # 底部导航/导轨 + 路由
+│   ├── navigation/AppNav.kt        # 底部导航 4 项（首页/收藏/历史/设置）+ 宽屏导轨 + 路由
 │   ├── home/ lawlist/ reader/ search/ favorites/ history/ settings/
+│   ├── reader/SelectableText.kt    # 自研长按选词 + 官方 Modifier.magnifier 放大镜
+│   ├── RepositoryProvider.kt       # 仓库的 CompositionLocal 注入
 │   └── components/BottomSheet.kt   # 自实现 MD3 底部抽屉
 ├── design/                         # MD3 设计系统文档 + 可交互原型
 ├── ui-prototype/                   # 早期 UI 原型
@@ -203,6 +207,9 @@ app/src/main/java/com/lawrefbook/unified/
 | 长按选择放大镜内容与手指位置严重错位（自研 loupe 的 graphicsLayer 缺 `transformOrigin`，偏移随文本宽度可达数百 px） | 改用 **Jetpack Compose 官方 `Modifier.magnifier`**（`android.widget.Magnifier` 封装：自动悬浮跟随、越界夹紧、平台级内容对齐），保留自研选区高亮/边界手柄/复制分享 |
 | 单元测试无法编译/失败（方法名含 `/`、测试输入与真实数据格式不符） | 修复 + 新增回归测试 |
 | 无法回到上次阅读位置（阅读体验缺失） | 新增「阅读进度记忆」：滚动位置 `snapshotFlow` 防抖持久化、`history` 表 upsert 保留 scroll 字段（v3 迁移）、重进自动恢复 |
+| 首页信息过载：分类滚动截断、最近浏览/常用法规冗余 | 首页精简：移除「最近浏览」「常用法规」，法律分类改为 3 列网格一屏全量展示 |
+| 底部导航「检索」与首页搜索入口重复 | 底栏移除检索按钮（保留首页/收藏/历史/设置 4 项），检索统一从首页顶部搜索框进入 |
+| 检索页「最近搜索」为硬编码假数据 | 接入 DataStore 真实搜索历史（最近 10 条，`\u0001` 分隔持久化），chip 改长方形（6dp 圆角/32dp 高） |
 
 ## License
 

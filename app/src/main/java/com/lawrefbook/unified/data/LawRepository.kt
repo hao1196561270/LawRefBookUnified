@@ -115,6 +115,10 @@ class LawRepository(private val context: Context) {
         db.favoritesDao().getById(id) != null
     }
 
+    suspend fun updateFavoriteClassify(id: String, classify: String) = withContext(Dispatchers.IO) {
+        db.favoritesDao().updateClassify(id, classify)
+    }
+
     fun favoritesFlow(): Flow<List<FavoritesEntity>> = db.favoritesDao().getAll()
 
     // ---- 历史 ----

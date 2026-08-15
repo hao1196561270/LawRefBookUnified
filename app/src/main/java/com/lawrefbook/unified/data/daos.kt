@@ -24,6 +24,10 @@ interface FavoritesDao {
 
     @Query("SELECT * FROM favorites WHERE id = :id")
     suspend fun getById(id: String): FavoritesEntity?
+
+    /** 更新收藏分类（用于收藏页按分类整理）。 */
+    @Query("UPDATE favorites SET classify = :classify WHERE id = :id")
+    suspend fun updateClassify(id: String, classify: String)
 }
 
 @Dao

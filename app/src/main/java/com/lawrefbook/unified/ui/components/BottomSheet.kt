@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,12 +27,18 @@ import androidx.compose.ui.zIndex
 
 /**
  * 轻量底部抽屉（MD3 Bottom Sheet）：顶部拖拽手柄 + 遮罩，点击遮罩关闭。
- * 用 AnimatedVisibility 自实现，避免不同 Material3 版本 ModalBottomSheet API 差异。
+ * 默认半屏高度（可看到背景正文），顶部圆角与界面协调；用 AnimatedVisibility 自实现。
+ *
+ * @param visible      是否显示
+ * @param onDismiss    点击遮罩/关闭回调
+ * @param heightFraction 抽屉高度占屏幕比例，默认 0.5（半屏）
+ * @param content      抽屉内容
  */
 @Composable
 fun BottomSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
+    heightFraction: Float = 0.5f,
     content: @Composable ColumnScope.() -> Unit
 ) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
@@ -44,7 +51,10 @@ fun BottomSheet(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(heightFraction)
             ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),

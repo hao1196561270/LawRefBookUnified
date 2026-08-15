@@ -3,30 +3,29 @@ package com.lawrefbook.unified.ui.reader
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +51,7 @@ import com.lawrefbook.unified.data.model.FlatItem
 import com.lawrefbook.unified.data.model.LawEntity
 import com.lawrefbook.unified.data.model.LawGroup
 import com.lawrefbook.unified.data.model.flatten
+import com.lawrefbook.unified.ui.components.BottomSheet
 import com.lawrefbook.unified.ui.rememberRepository
 import com.lawrefbook.unified.ui.rememberSettings
 import kotlinx.coroutines.launch
@@ -95,7 +95,8 @@ fun ReaderScreen(nav: NavHostController, lawId: String, targetArticle: String?) 
     var savedScroll by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     val listState = rememberLazyListState()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    // 目录半屏抽屉显示状态
+    var showToc by remember { mutableStateOf(false) }
     val headings = nodes.filterIsInstance<RenderNode.Heading>()
 
     // 长按复制：剪贴板 + 提示宿主（浮层，不影响正文布局）
@@ -149,79 +150,52 @@ fun ReaderScreen(nav: NavHostController, lawId: String, targetArticle: String?) 
     }
 
     val lawName = law?.name ?: "法条"
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = true,
-        drawerContent = {
-            ModalDrawerSheet {
-                Text("本章目录", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                if (headings.isEmpty()) {
-                    Text("（暂无章节）", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp))
-                }
-                headings.forEach { h ->
-                    val idx = nodes.indexOf(h)
-                    Text(
-                        h.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.fillMaxWidth()
-                            .clickable {
-                                scope.launch {
-                                    if (idx >= 0) listState.scrollToItem(idx)
-                                    drawerState.close()
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
-                    )
-                }
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(lawName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, "目录")
-                        }
-                        IconButton(onClick = {
-                            val t = targetArticle ?: ""
-                            val favId = "$lawId|$t"
-                            scope.launch {
-                                if (isFav) {
-                                    repo.removeFavorite(favId)
-                                    isFav = false
-                                } else {
-                                    val item = flat.firstOrNull { it.article == t }
-                                    repo.addFavorite(
-                                        FavoritesEntity(
-                                            id = favId,
-                                            lawId = lawId,
-                                            lawName = lawName,
-                                            article = t,
-                                            content = item?.content ?: ""
-                                        )
-                                    )
-                                    isFav = true
-                                }
-                            }
-                        }) {
-                            Icon(
-                                if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                "收藏"
-                            )
-                        }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(lawName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
-                )
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-            snackbarHost = { SnackbarHost(snackbarHostState) }
-        ) { padding ->
+                },
+                actions = {
+                    IconButton(onClick = { showToc = true }) {
+                        Icon(Icons.Filled.Menu, "目录")
+                    }
+                    IconButton(onClick = {
+                        val t = targetArticle ?: ""
+                        val favId = "$lawId|$t"
+                        scope.launch {
+                            if (isFav) {
+                                repo.removeFavorite(favId)
+                                isFav = false
+                            } else {
+                                val item = flat.firstOrNull { it.article == t }
+                                repo.addFavorite(
+                                    FavoritesEntity(
+                                        id = favId,
+                                        lawId = lawId,
+                                        lawName = lawName,
+                                        article = t,
+                                        content = item?.content ?: ""
+                                    )
+                                )
+                                isFav = true
+                            }
+                        }
+                    }) {
+                        Icon(
+                            if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            "收藏"
+                        )
+                    }
+                }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
             if (loading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -303,6 +277,43 @@ fun ReaderScreen(nav: NavHostController, lawId: String, targetArticle: String?) 
                             }
                         }
                     }
+                }
+            }
+        }
+
+    // 目录半屏抽屉：只露出顶部圆角、高度半屏，背景正文仍可见；
+    // 目录项文字过长自动换行（softWrap 默认开启）
+    BottomSheet(
+        visible = showToc,
+        onDismiss = { showToc = false },
+        heightFraction = 0.5f
+    ) {
+        Text("本章目录", style = MaterialTheme.typography.titleLarge)
+        if (headings.isEmpty()) {
+            Text("（暂无章节）", style = MaterialTheme.typography.bodyMedium)
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                headings.forEach { h ->
+                    val idx = nodes.indexOf(h)
+                    Text(
+                        h.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        softWrap = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                scope.launch {
+                                    if (idx >= 0) listState.scrollToItem(idx)
+                                    showToc = false
+                                }
+                            }
+                            .padding(horizontal = 4.dp, vertical = 10.dp)
+                    )
                 }
             }
         }

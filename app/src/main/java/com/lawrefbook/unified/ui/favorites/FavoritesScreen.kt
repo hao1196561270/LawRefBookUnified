@@ -115,10 +115,10 @@ fun FavoritesScreen(nav: NavHostController) {
                             },
                             trailingContent = {
                                 IconButton(onClick = { editingItem = f; newClassify = f.classify }) {
-                                    Icon(Icons.Filled.Create, "编辑分类")
+                                    Icon(Icons.Filled.Create, contentDescription = "编辑分类")
                                 }
                                 IconButton(onClick = { scope.launch { repo.removeFavorite(f.id) } }) {
-                                    Icon(Icons.Filled.Delete, "删除")
+                                    Icon(Icons.Filled.Delete, contentDescription = "删除")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().clickable {

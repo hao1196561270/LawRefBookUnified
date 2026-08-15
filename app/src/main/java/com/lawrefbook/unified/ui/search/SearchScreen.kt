@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,10 +61,9 @@ import com.lawrefbook.unified.data.search.SortField
 import com.lawrefbook.unified.data.search.SortOrder
 import com.lawrefbook.unified.ui.components.BottomSheet
 import com.lawrefbook.unified.ui.rememberRepository
+import com.lawrefbook.unified.ui.rememberSettings
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
-
-private val RECENT = listOf("正当防卫", "竞业限制", "工伤认定", "酒驾", "合同纠纷")
 
 private val MODE_ITEMS = listOf(
     SearchMode.EXACT to "精确匹配",
@@ -83,7 +83,10 @@ private val SORT_ITEMS = listOf(
 @Composable
 fun SearchScreen(nav: NavHostController) {
     val repo = rememberRepository()
+    val settings = rememberSettings()
     val scope = rememberCoroutineScope()
+
+    val recentSearches by settings.recentSearches.collectAsState(initial = emptyList())
 
     var keyword by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf(SearchMode.FUZZY) }
@@ -122,6 +125,10 @@ fun SearchScreen(nav: NavHostController) {
 
     fun runSearch() {
         searching = true
+        val kw = keyword.trim()
+        if (kw.isNotEmpty()) {
+            scope.launch { settings.addRecentSearch(kw) }
+        }
         scope.launch {
             results = repo.search(buildQuery())
             searching = false
@@ -206,19 +213,28 @@ fun SearchScreen(nav: NavHostController) {
             keyword.isBlank() && filterCount == 0 -> {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text("最近搜索", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        RECENT.forEach { r ->
-                            Box(
-                                Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .clickable { keyword = r; runSearch() }
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                            ) {
-                                Text(r, color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.labelLarge)
+                    if (recentSearches.isEmpty()) {
+                        Text(
+                            "暂无搜索记录，输入关键词开始检索",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    } else {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            recentSearches.forEach { r ->
+                                Box(
+                                    Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                        .clickable { keyword = r; runSearch() }
+                                        .defaultMinSize(minHeight = 48.dp)
+                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                ) {
+                                    Text(r, color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.labelLarge)
+                                }
                             }
                         }
                     }

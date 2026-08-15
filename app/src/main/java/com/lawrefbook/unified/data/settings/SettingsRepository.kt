@@ -48,6 +48,12 @@ class SettingsRepository(private val context: Context) {
     val articleSpacing: Flow<Float> = ds.data.map { it[KEY_ART] ?: 8f }
     val customCategories: Flow<String> = ds.data.map { it[KEY_CATS] ?: "" }
 
+    // ---- 最近搜索（真实历史，去重、最近在前、上限 RECENT_SEARCH_LIMIT） ----
+    val recentSearches: Flow<List<String>> = ds.data.map { prefs ->
+        val raw = prefs[KEY_RECENT_SEARCHES] ?: ""
+        if (raw.isEmpty()) emptyList() else raw.split(RECENT_SEP).filter { it.isNotBlank() }
+    }
+
     // ---- 法条数据版本 ----
     val dataCommitSha: Flow<String> = ds.data.map { it[KEY_DATA_COMMIT] ?: BuiltinData.COMMIT }
     val dataUpdatedAt: Flow<Long> = ds.data.map { it[KEY_DATA_UPDATED_AT] ?: 0L }
@@ -66,6 +72,20 @@ class SettingsRepository(private val context: Context) {
     suspend fun setArticleSpacing(v: Float) = ds.edit { it[KEY_ART] = v }
     suspend fun setCustomCategories(v: String) = ds.edit { it[KEY_CATS] = v }
 
+    /** 记录一次搜索：去重后置顶，最多保留 [RECENT_SEARCH_LIMIT] 条。 */
+    suspend fun addRecentSearch(keyword: String) {
+        val kw = keyword.trim()
+        if (kw.isEmpty()) return
+        ds.edit { prefs ->
+            val raw = prefs[KEY_RECENT_SEARCHES] ?: ""
+            val list = (if (raw.isEmpty()) emptyList() else raw.split(RECENT_SEP))
+                .filter { it.isNotBlank() && it != kw }
+                .toMutableList()
+            list.add(0, kw)
+            prefs[KEY_RECENT_SEARCHES] = list.take(RECENT_SEARCH_LIMIT).joinToString(RECENT_SEP)
+        }
+    }
+
     suspend fun setDataVersion(commit: String, updatedAt: Long) =
         ds.edit { it[KEY_DATA_COMMIT] = commit; it[KEY_DATA_UPDATED_AT] = updatedAt }
 
@@ -83,6 +103,9 @@ class SettingsRepository(private val context: Context) {
         private val KEY_LINE = floatPreferencesKey("line_spacing")
         private val KEY_ART = floatPreferencesKey("article_spacing")
         private val KEY_CATS = stringPreferencesKey("custom_categories")
+        private val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        private const val RECENT_SEP = "\u0001"
+        private const val RECENT_SEARCH_LIMIT = 10
         private val KEY_DATA_COMMIT = stringPreferencesKey("data_commit")
         private val KEY_DATA_UPDATED_AT = longPreferencesKey("data_updated_at")
         private val KEY_LAST_CHECK_AT = longPreferencesKey("last_check_at")

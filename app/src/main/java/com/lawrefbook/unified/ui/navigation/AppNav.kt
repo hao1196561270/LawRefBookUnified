@@ -45,6 +45,10 @@ import com.lawrefbook.unified.ui.home.HomeScreen
 import com.lawrefbook.unified.ui.lawlist.LawListScreen
 import com.lawrefbook.unified.ui.reader.ReaderScreen
 import com.lawrefbook.unified.ui.search.SearchScreen
+import com.lawrefbook.unified.ui.categories.LawCategoriesScreen
+import com.lawrefbook.unified.ui.cases.RulesScreen
+import com.lawrefbook.unified.ui.cases.SimilarCasesScreen
+import com.lawrefbook.unified.ui.cases.CaseDetailScreen
 import com.lawrefbook.unified.ui.settings.SettingsScreen
 import com.lawrefbook.unified.ui.settings.AboutScreen
 import com.lawrefbook.unified.ui.settings.ThemeSettingsScreen
@@ -139,6 +143,15 @@ private fun AppNavHost(nav: NavHostController, modifier: Modifier = Modifier) {
         composable("reader_settings") { ReaderSettingsScreen(nav) }
         composable("data_settings") { DataSettingsScreen(nav) }
         composable("about") { AboutScreen(nav) }
+        composable("law_categories") { LawCategoriesScreen(nav) }
+        composable("rules") { RulesScreen(nav) }
+        composable("similar_cases") { SimilarCasesScreen(nav) }
+        composable(
+            route = "case/{caseId}",
+            arguments = listOf(navArgument("caseId") { type = NavType.StringType })
+        ) {
+            CaseDetailScreen(nav, it.arguments?.getString("caseId") ?: "")
+        }
         composable(
             route = "lawlist/{categoryId}",
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType })

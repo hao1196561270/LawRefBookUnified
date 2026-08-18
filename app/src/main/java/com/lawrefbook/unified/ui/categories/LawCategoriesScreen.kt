@@ -117,11 +117,15 @@ fun LawCategoriesScreen(nav: NavHostController) {
 @Composable
 private fun CategoryCard(cat: CategoryEntity, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().height(100.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier.fillMaxSize().padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Box(
                 Modifier.size(32.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center

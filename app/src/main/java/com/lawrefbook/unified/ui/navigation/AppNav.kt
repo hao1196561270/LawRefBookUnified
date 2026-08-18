@@ -46,14 +46,12 @@ import com.lawrefbook.unified.ui.lawlist.LawListScreen
 import com.lawrefbook.unified.ui.reader.ReaderScreen
 import com.lawrefbook.unified.ui.search.SearchScreen
 import com.lawrefbook.unified.ui.categories.LawCategoriesScreen
-import com.lawrefbook.unified.ui.cases.RulesScreen
-import com.lawrefbook.unified.ui.cases.SimilarCasesScreen
-import com.lawrefbook.unified.ui.cases.CaseDetailScreen
 import com.lawrefbook.unified.ui.settings.SettingsScreen
 import com.lawrefbook.unified.ui.settings.AboutScreen
 import com.lawrefbook.unified.ui.settings.ThemeSettingsScreen
 import com.lawrefbook.unified.ui.settings.ReaderSettingsScreen
 import com.lawrefbook.unified.ui.settings.DataSettingsScreen
+import com.lawrefbook.unified.ui.versions.VersionsScreen
 
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "首页", Icons.Filled.Home)
@@ -144,13 +142,11 @@ private fun AppNavHost(nav: NavHostController, modifier: Modifier = Modifier) {
         composable("data_settings") { DataSettingsScreen(nav) }
         composable("about") { AboutScreen(nav) }
         composable("law_categories") { LawCategoriesScreen(nav) }
-        composable("rules") { RulesScreen(nav) }
-        composable("similar_cases") { SimilarCasesScreen(nav) }
         composable(
-            route = "case/{caseId}",
-            arguments = listOf(navArgument("caseId") { type = NavType.StringType })
+            route = "versions/{lawId}",
+            arguments = listOf(navArgument("lawId") { type = NavType.StringType })
         ) {
-            CaseDetailScreen(nav, it.arguments?.getString("caseId") ?: "")
+            VersionsScreen(nav, it.arguments?.getString("lawId") ?: "")
         }
         composable(
             route = "lawlist/{categoryId}",

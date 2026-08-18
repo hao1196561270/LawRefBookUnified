@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>法条通 · UI 主题方案选择</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+    background:#f2f4f8; color:#222; padding:32px 16px;
+  }
+  h1 { text-align:center; font-size:24px; margin-bottom:6px; }
+  .sub { text-align:center; color:#777; font-size:13px; margin-bottom:24px; }
+  .switcher {
+    display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:28px;
+  }
+  .switcher button {
+    border:2px solid #ddd; background:#fff; border-radius:999px; padding:10px 20px;
+    font-size:14px; cursor:pointer; transition:all .15s;
+  }
+  .switcher button.active { border-color:#333; background:#333; color:#fff; }
+  .stage {
+    display:flex; justify-content:center; gap:32px; flex-wrap:wrap; max-width:1100px; margin:0 auto;
+  }
+  .phone {
+    width:300px; border-radius:36px; padding:12px; background:#111;
+    box-shadow:0 12px 40px rgba(0,0,0,.25);
+  }
+  .screen {
+    border-radius:26px; overflow:hidden; height:620px; display:flex; flex-direction:column;
+    position:relative; background:var(--bg);
+  }
+  .phone-label {
+    text-align:center; color:#555; font-size:13px; margin-top:10px;
+  }
+
+  /* ===== 状态栏 ===== */
+  .statusbar {
+    display:flex; justify-content:space-between; padding:10px 18px 4px;
+    font-size:11px; color:var(--on-bg); font-weight:600;
+  }
+  /* ===== 顶栏 ===== */
+  .topbar {
+    display:flex; align-items:center; gap:10px; padding:8px 16px 12px;
+  }
+  .topbar .back { font-size:18px; color:var(--on-bg); }
+  .topbar .title { font-size:16px; font-weight:700; color:var(--on-bg); flex:1; font-family:var(--font-title); }
+  .topbar .act { font-size:15px; color:var(--on-bg); opacity:.7; }
+
+  /* ===== 首页 ===== */
+  .search {
+    margin:4px 16px 10px; padding:10px 14px; border-radius:var(--r-full);
+    background:var(--search-bg); color:var(--search-text); font-size:12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-title {
+    margin:12px 16px 6px; font-size:12px; font-weight:700; color:var(--primary);
+    letter-spacing:.5px;
+  }
+  .cat-row {
+    display:flex; align-items:center; padding:14px 16px; gap:8px;
+    border-bottom:1px solid var(--divider); color:var(--on-bg);
+  }
+  .cat-row .name { flex:1; font-size:14px; font-weight:600; font-family:var(--font-title); }
+  .cat-row .arrow { color:var(--primary); font-size:14px; }
+  .cat-row .count { font-size:11px; color:var(--muted); }
+
+  /* ===== 二级列表 ===== */
+  .chips { display:flex; gap:8px; padding:6px 16px 10px; overflow:hidden; }
+  .chip {
+    padding:5px 12px; border-radius:var(--r-full); font-size:11px; white-space:nowrap;
+    background:var(--chip-bg); color:var(--chip-text);
+  }
+  .chip.on { background:var(--primary); color:var(--on-primary); }
+  .law-row {
+    display:flex; align-items:center; padding:13px 16px; gap:8px;
+    border-bottom:1px solid var(--divider);
+  }
+  .law-row .nm { flex:1; font-size:13px; color:var(--on-bg); font-weight:500; }
+  .law-row .yr { font-size:11px; color:var(--muted); }
+  .law-row .tag {
+    font-size:10px; padding:2px 8px; border-radius:var(--r-full);
+    background:var(--tag-bg); color:var(--tag-text);
+  }
+
+  /* ===== 阅读页 ===== */
+  .meta {
+    margin:6px 16px 10px; padding:12px 14px; border-radius:var(--r-m);
+    background:var(--card-bg); border:1px solid var(--divider);
+  }
+  .meta .m { font-size:11px; color:var(--muted); margin-bottom:4px; display:flex; gap:6px; }
+  .meta .m b { color:var(--on-bg); font-weight:600; }
+  .article-title {
+    margin:12px 16px 6px; font-size:15px; font-weight:800; color:var(--on-bg);
+    font-family:var(--font-title);
+  }
+  .article-text {
+    margin:0 16px 14px; font-size:13px; line-height:1.9; color:var(--text);
+    font-family:var(--font-body);
+  }
+
+  /* ===== 底部导航 ===== */
+  .bottomnav {
+    margin-top:auto; display:flex; border-top:1px solid var(--divider);
+    background:var(--nav-bg); padding:6px 0 10px;
+  }
+  .bottomnav .item { flex:1; text-align:center; font-size:10px; color:var(--muted); }
+  .bottomnav .item .ic { font-size:16px; display:block; margin-bottom:2px; }
+  .bottomnav .item.on { color:var(--primary); font-weight:700; }
+  .bottomnav .item.on .ic { color:var(--primary); }
+
+  /* 滚动内容区 */
+  .scroll { flex:1; overflow:hidden; }
+
+  /* ============ 主题 1：清朗蓝（现代政务） ============ */
+  .t-blue {
+    --primary:#1565C0; --on-primary:#fff;
+    --bg:#F4F7FB; --on-bg:#1A2733; --text:#2A3A4A;
+    --muted:#7A8B9B; --divider:#E3E9F0;
+    --search-bg:#FFFFFF; --search-text:#9AA9B8;
+    --chip-bg:#E8EFF8; --chip-text:#3A556E;
+    --tag-bg:#E3EDFA; --tag-text:#1565C0;
+    --card-bg:#FFFFFF; --nav-bg:#FFFFFF;
+    --r-full:999px; --r-m:14px;
+    --font-title:"PingFang SC","Microsoft YaHei",sans-serif;
+    --font-body:"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  /* ============ 主题 2：典雅青（书卷古籍） ============ */
+  .t-ink {
+    --primary:#3E5C4B; --on-primary:#fff;
+    --bg:#F6F3EC; --on-bg:#2C2A24; --text:#3A362E;
+    --muted:#8D8878; --divider:#E4DFD2;
+    --search-bg:#FDFBF6; --search-text:#A39E8D;
+    --chip-bg:#EAE4D6; --chip-text:#5A564A;
+    --tag-bg:#E3EBDD; --tag-text:#3E5C4B;
+    --card-bg:#FDFBF6; --nav-bg:#FDFBF6;
+    --r-full:8px; --r-m:10px;
+    --font-title:"STSong","SimSun","Songti SC",serif;
+    --font-body:"STSong","SimSun","Songti SC",serif;
+  }
+  /* ============ 主题 3：深邃金（深色专业） ============ */
+  .t-gold {
+    --primary:#D4A94E; --on-primary:#241A05;
+    --bg:#17191D; --on-bg:#ECEAE4; --text:#C9C6BE;
+    --muted:#8A877F; --divider:#2A2D33;
+    --search-bg:#23262C; --search-text:#8A877F;
+    --chip-bg:#23262C; --chip-text:#A9A69E;
+    --tag-bg:#2E2A1C; --tag-text:#D4A94E;
+    --card-bg:#202329; --nav-bg:#1D2025;
+    --r-full:999px; --r-m:12px;
+    --font-title:"PingFang SC","Microsoft YaHei",sans-serif;
+    --font-body:"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  /* ============ 主题 4：法徽红（庄重传统） ============ */
+  .t-red {
+    --primary:#B23A3A; --on-primary:#fff;
+    --bg:#FAF7F3; --on-bg:#33241E; --text:#4A3A32;
+    --muted:#A08B80; --divider:#EADFD6;
+    --search-bg:#FFFFFF; --search-text:#B5A397;
+    --chip-bg:#F3E7E0; --chip-text:#7A5544;
+    --tag-bg:#F6E3E0; --tag-text:#B23A3A;
+    --card-bg:#FFFFFF; --nav-bg:#FFFFFF;
+    --r-full:999px; --r-m:12px;
+    --font-title:"STSong","SimSun","Songti SC",serif;
+    --font-body:"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+</style>
+</head>
+<body class="t-blue">
+  <h1>法条通 · UI 主题方案</h1>
+  <div class="sub">选择一套风格，我会按它重构 App 界面（配色/字体/圆角/密度全部可调）</div>
+
+  <div class="switcher">
+    <button data-t="t-blue" class="active">① 清朗蓝 · 现代政务</button>
+    <button data-t="t-ink">② 典雅青 · 书卷古籍</button>
+    <button data-t="t-gold">③ 深邃金 · 深色专业</button>
+    <button data-t="t-red">④ 法徽红 · 庄重传统</button>
+  </div>
+
+  <div class="stage">
+    <!-- ========== 首页 ========== -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="topbar"><span class="title">法条通</span></div>
+        <div class="search">🔍 搜索法律、法规…</div>
+        <div class="section-title">法律分类</div>
+        <div class="scroll">
+          <div class="cat-row"><span class="name">宪法</span><span class="count">6 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">民法典</span><span class="count">8 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">宪法相关法</span><span class="count">76 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">行政法</span><span class="count">89 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">民法商法</span><span class="count">102 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">社会法</span><span class="count">64 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">刑法</span><span class="count">12 部</span><span class="arrow">›</span></div>
+          <div class="cat-row"><span class="name">经济法</span><span class="count">95 部</span><span class="arrow">›</span></div>
+        </div>
+      </div></div>
+      <div class="phone-label">首页 · 分类列表</div>
+    </div>
+
+    <!-- ========== 二级列表 ========== -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="topbar"><span class="back">‹</span><span class="title">宪法</span><span class="act">⛭</span></div>
+        <div class="chips">
+          <span class="chip on">全部</span><span class="chip">法律</span><span class="chip">行政法规</span><span class="chip">司法解释</span>
+        </div>
+        <div class="scroll">
+          <div class="law-row"><span class="nm">宪法</span><span class="tag">法律</span></div>
+          <div class="law-row"><span class="nm">宪法修正案（2018年）</span></div>
+          <div class="law-row"><span class="nm">宪法修正案（2004年）</span></div>
+          <div class="law-row"><span class="nm">宪法修正案（1999年）</span></div>
+          <div class="law-row"><span class="nm">宪法修正案（1993年）</span></div>
+          <div class="law-row"><span class="nm">宪法修正案（1988年）</span></div>
+          <div class="law-row"><span class="nm">国家发展规划法</span><span class="yr">2026</span></div>
+          <div class="law-row"><span class="nm">民族团结进步促进法</span><span class="yr">2026</span></div>
+        </div>
+      </div></div>
+      <div class="phone-label">二级页 · 法规列表（时间排序）</div>
+    </div>
+
+    <!-- ========== 阅读页 ========== -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="topbar"><span class="back">‹</span><span class="title">宪法</span><span class="act">☰</span></div>
+        <div class="scroll">
+          <div class="meta">
+            <div class="m"><span>发布机关</span><b>全国人民代表大会</b></div>
+            <div class="m"><span>发布日期</span><b>2018年3月11日</b></div>
+            <div class="m"><span>当前效力</span><b>有效</b></div>
+          </div>
+          <div class="article-title">序言</div>
+          <div class="article-text">中国是世界上历史最悠久的国家之一。中国各族人民共同创造了光辉灿烂的文化，具有光荣的革命传统。</div>
+          <div class="article-title">第一条</div>
+          <div class="article-text">中华人民共和国是工人阶级领导的、以工农联盟为基础的人民民主专政的社会主义国家。社会主义制度是中华人民共和国的根本制度。中国共产党领导是中国特色社会主义最本质的特征。禁止任何组织或者个人破坏社会主义制度。</div>
+          <div class="article-title">第二条</div>
+          <div class="article-text">中华人民共和国的一切权力属于人民。人民行使国家权力的机关是全国人民代表大会和地方各级人民代表大会。</div>
+        </div>
+      </div></div>
+      <div class="phone-label">阅读页 · 法条正文</div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.switcher button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.body.className = btn.dataset.t;
+      });
+    });
+  </script>
+</body>
+</html>

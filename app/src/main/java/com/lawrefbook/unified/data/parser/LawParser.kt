@@ -21,6 +21,8 @@ object LawParser {
     private val HEADING_RE = Regex("^#+\\s.*")
     private val ARTICLE_LINE_RE = Regex("^第.+条.*")
     private val FRONTMATTER_RE = Regex("^---$")
+    /** 数据源元数据注释：<!-- INFO END -->（frontmatter 结束）、<!-- FORCE BREAK -->（强制分段）等 */
+    private val HTML_COMMENT_RE = Regex("<!--[\\s\\S]*?-->")
 
     fun parse(lines: List<String>): LawGroup {
         val base = LawGroup(level = 0, title = "", groups = mutableListOf(), items = mutableListOf())
@@ -60,14 +62,17 @@ object LawParser {
                 if (frontmatter) continue
                 frontmatterDone = true
             }
-            if (line.trim().isEmpty()) continue
+            // 过滤数据源 HTML 注释（<!-- INFO END --> / <!-- FORCE BREAK --> / 行内备注），
+            // 避免元数据标记泄漏到条文正文。
+            val cleaned = HTML_COMMENT_RE.replace(line, "").trim()
+            if (cleaned.isEmpty()) continue
 
             when {
-                HEADING_RE.matches(line) -> {
+                HEADING_RE.matches(cleaned) -> {
                     put(current.toString())
                     current = StringBuilder()
-                    val level = line.count { it == '#' }
-                    val title = line.replace(Regex("^#+\\s"), "")
+                    val level = cleaned.count { it == '#' }
+                    val title = cleaned.replace(Regex("^#+\\s"), "")
                     while (stack.size > 1 && stack.last().level >= level) stack.removeLast()
                     val group = LawGroup(
                         level = level, title = title,
@@ -76,15 +81,15 @@ object LawParser {
                     stack.last().groups.add(group)
                     stack.addLast(group)
                 }
-                ARTICLE_LINE_RE.matches(line) -> {
+                ARTICLE_LINE_RE.matches(cleaned) -> {
                     put(current.toString())
-                    current = StringBuilder(line)
+                    current = StringBuilder(cleaned)
                 }
                 else -> {
                     // 续行（多段落条文）：在既有内容后补一个换行再拼接，保持段落分隔。
                     // 不能用 appendLine（会把换行加在续行之后，再被 put() 的 trim 删掉，导致段落合并）。
                     if (current.isNotEmpty()) current.append('\n')
-                    current.append(line)
+                    current.append(cleaned)
                 }
             }
         }

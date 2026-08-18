@@ -46,8 +46,42 @@ class LawRepository(private val context: Context) {
         catalog.getLawById(id)
     }
 
+    /** 某部法规的版本族（主体 + 历次修正案），按时间升序，主体（现行）最后。 */
+    suspend fun getLawVersions(lawId: String): List<LawEntity> = withContext(Dispatchers.IO) {
+        catalog.getLawVersions(lawId)
+    }
+
     suspend fun parseLaw(law: LawEntity): LawGroup = withContext(Dispatchers.IO) {
         catalog.parseLaw(law)
+    }
+
+    /** 法规元信息（发布/实施日期、机关、效力）——阅读页信息卡用 */
+    suspend fun parseLawMeta(law: LawEntity): LawMeta = withContext(Dispatchers.IO) {
+        catalog.parseLawMeta(law)
+    }
+
+    /**
+     * 某部法规的全部历史修正记录（版本族内所有"修正案（YYYY年）"文件解析结果）。
+     * 用于阅读页脚注标注：正文命中处显示修正标记，点击查看不同之处。
+     */
+    suspend fun getAmendments(lawId: String): List<Amendment> = withContext(Dispatchers.IO) {
+        val versions = catalog.getLawVersions(lawId)
+        val out = ArrayList<Amendment>()
+        for (v in versions) {
+            // 只解析修正案文件（主体文件会被误判章节为修正）
+            if (!v.name.contains("修正案")) continue
+            // 文件名带年份（宪法修正案（2018年））直接取；否则传 null 由解析器从正文提取（刑法修正案（四）等）
+            val year = v.name.takeIf { it.isNotBlank() }
+                ?.let { Regex("（(\\d{4})年）").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            val folder = catalog.categoryFolder(v.categoryId)
+            val path = catalog.resolvePath(folder, v.name, v.fileName, v.publish, v.subTitle)
+            val text = catalog.readLawLines(path).joinToString("\n")
+            val parsed = AmendmentParser.parse(text, year)
+            android.util.Log.i("Amendments", "law=${v.name} year=$year parsed=${parsed.size}")
+            out += parsed
+        }
+        android.util.Log.i("Amendments", "total=${out.size} for lawId=$lawId")
+        out
     }
 
     // ---- 检索索引（首次启动构建一次；schema 升级时强制重建） ----
@@ -139,7 +173,7 @@ class LawRepository(private val context: Context) {
 
     companion object {
         /** 检索索引 schema/解析版本；递增会强制清空并重建索引以补齐新字段或新解析结果。 */
-        private const val INDEX_VERSION = 3
+        private const val INDEX_VERSION = 5
         private const val KEY_INDEX_VERSION = "search_index_version"
     }
 }

@@ -58,8 +58,30 @@ data class LawEntity(
     val order: Int? = null,
     val subTitle: String? = null,
     val tags: String? = null,
-    val categoryId: String
+    val categoryId: String,
+    /** 效力截止日期（'2099-12-31' = 现行有效） */
+    val validTo: String? = null
 )
+
+/** 法规年份：名称里的（YYYY年）优先，否则取 publish 年份；都没有 → null（现行/无年份） */
+fun LawEntity.lawYear(): Int? {
+    Regex("（(\\d{4})年）").find(name)?.let { return it.groupValues[1].toIntOrNull() }
+    return publish?.take(4)?.toIntOrNull()
+}
+
+/** 按时间排序：无年份的现行版本排最前，其余按年份降序（最新在前），同年按名称。 */
+fun List<LawEntity>.sortedByTime(): List<LawEntity> = sortedWith(
+    compareBy<LawEntity> { it.lawYear() != null }      // 现行（无年份）优先
+        .thenByDescending { it.lawYear() ?: 0 }        // 年份降序
+        .thenBy { it.name }                            // 同年按名称
+)
+
+/** 显示名：名称未带年份时补「（年份）」，如"法律援助法" → "法律援助法（2021）" */
+fun LawEntity.displayName(): String {
+    if (Regex("（\\d{4}年）").containsMatchIn(name)) return name
+    val year = publish?.take(4)
+    return if (!year.isNullOrBlank()) "$name（$year）" else name
+}
 
 /**
  * 检索结果

@@ -35,9 +35,11 @@ interface HistoryDao {
     /**
      * 写入/更新历史行：已存在时只刷新 lawName/lastRead，
      * **保留 scrollIndex/scrollOffset 阅读进度**（不能整行 REPLACE，否则会清掉进度）。
+     * 显式提供 scrollIndex/scrollOffset = 0，兼容无 DEFAULT 约束的旧 schema。
      */
     @Query(
-        "INSERT INTO history (lawId, lawName, lastRead) VALUES (:lawId, :lawName, :lastRead) " +
+        "INSERT INTO history (lawId, lawName, lastRead, scrollIndex, scrollOffset) " +
+        "VALUES (:lawId, :lawName, :lastRead, 0, 0) " +
         "ON CONFLICT(lawId) DO UPDATE SET lawName = excluded.lawName, lastRead = excluded.lastRead"
     )
     suspend fun upsert(lawId: String, lawName: String, lastRead: Long)

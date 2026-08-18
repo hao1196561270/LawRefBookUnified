@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>法条通 · 重构方案预览</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+    background:#eef2f7; color:#222; padding:28px 16px 60px;
+  }
+  h1 { text-align:center; font-size:22px; }
+  .sub { text-align:center; color:#888; font-size:13px; margin:6px 0 24px; }
+  .stage { display:flex; justify-content:center; gap:36px; flex-wrap:wrap; max-width:1000px; margin:0 auto; }
+  .phone {
+    width:310px; border-radius:38px; padding:12px; background:#141518;
+    box-shadow:0 14px 44px rgba(0,0,0,.28);
+  }
+  .screen {
+    border-radius:28px; overflow:hidden; height:640px; display:flex; flex-direction:column;
+    background:#F4F7FB; position:relative;
+  }
+  .phone-label { text-align:center; color:#667; font-size:13px; margin-top:10px; }
+
+  /* 状态栏 */
+  .statusbar { display:flex; justify-content:space-between; padding:9px 18px 2px; font-size:11px; color:#1A2733; font-weight:600; }
+  /* 顶栏 */
+  .topbar { display:flex; align-items:center; gap:6px; padding:8px 12px 10px; }
+  .topbar .ic { font-size:17px; color:#1A2733; width:26px; text-align:center; cursor:pointer; }
+  .topbar .title { flex:1; font-size:15px; font-weight:700; color:#1A2733; text-align:center; }
+
+  /* 元信息卡 */
+  .meta-card {
+    margin:2px 14px 10px; padding:12px 14px; border-radius:14px;
+    background:#fff; border:1px solid #E3E9F0;
+  }
+  .meta-card .row { display:flex; margin-bottom:5px; font-size:11.5px; }
+  .meta-card .row:last-child { margin-bottom:0; }
+  .meta-card .k { color:#8A9AAB; width:72px; flex-shrink:0; }
+  .meta-card .v { color:#2A3A4A; font-weight:600; }
+  .meta-card .v.effective { color:#2E7D32; }
+  .meta-card .v .tag {
+    display:inline-block; padding:1px 8px; border-radius:999px; font-size:10px;
+    background:#E8F5E9; color:#2E7D32; margin-left:4px; font-weight:600;
+  }
+
+  /* 本页搜索 */
+  .page-search {
+    display:none; margin:0 14px 8px; padding:8px 12px; border-radius:12px;
+    background:#fff; border:1px solid #1565C0;
+  }
+  .page-search input {
+    border:0; outline:0; width:100%; font-size:12px; background:transparent; color:#2A3A4A;
+    font-family:inherit;
+  }
+  .page-search .hint { font-size:10px; color:#8A9AAB; margin-top:3px; }
+
+  /* 正文 */
+  .article-title { margin:10px 16px 4px; font-size:15px; font-weight:800; color:#1A2733; }
+  .article-text { margin:0 16px 12px; font-size:12.5px; line-height:1.9; color:#3A4A5A; }
+
+  /* 版本按钮 */
+  .version-btn {
+    margin:2px 14px 10px; padding:10px 14px; border-radius:12px;
+    background:#E3EDFA; color:#1565C0; font-size:12.5px; font-weight:700;
+    display:flex; align-items:center; cursor:pointer; user-select:none;
+  }
+  .version-btn span { flex:1; }
+  .version-btn .arr { font-size:14px; }
+
+  /* 时间线（历史版本视图） */
+  .timeline-view { display:none; padding:6px 16px 16px; }
+  .timeline-head { font-size:11px; color:#8A9AAB; margin:4px 2px 10px; }
+  .tl-row { display:flex; gap:10px; margin-bottom:0; }
+  .tl-left { width:22px; display:flex; flex-direction:column; align-items:center; }
+  .tl-dot { width:11px; height:11px; border-radius:50%; background:#BBD3F0; margin-top:6px; }
+  .tl-dot.main { background:#1565C0; }
+  .tl-line { width:2px; flex:1; background:#DDE6F0; min-height:26px; }
+  .tl-card {
+    flex:1; background:#fff; border:1px solid #E3E9F0; border-radius:12px;
+    padding:9px 12px; margin-bottom:10px; cursor:pointer;
+  }
+  .tl-card .y { font-size:15px; font-weight:800; color:#1565C0; }
+  .tl-card .n { font-size:12px; color:#2A3A4A; margin-top:2px; }
+  .tl-card.current { background:#E3EDFA; border-color:#BBD3F0; }
+  .tl-card.current .n { font-weight:700; }
+
+  /* 底部导航 */
+  .bottomnav {
+    margin-top:auto; display:flex; border-top:1px solid #E3E9F0; background:#fff; padding:5px 0 9px;
+  }
+  .bottomnav .item { flex:1; text-align:center; font-size:9.5px; color:#8A9AAB; }
+  .bottomnav .item .ic { font-size:15px; display:block; margin-bottom:2px; }
+  .bottomnav .item.on { color:#1565C0; font-weight:700; }
+
+  /* 说明面板 */
+  .notes { max-width:480px; margin:0 auto; }
+  .notes .card {
+    background:#fff; border-radius:16px; padding:18px 20px; margin-bottom:14px;
+    border:1px solid #E3E9F0;
+  }
+  .notes h3 { font-size:15px; color:#1565C0; margin-bottom:8px; }
+  .notes li { font-size:13px; color:#3A4A5A; margin:6px 0 0 18px; line-height:1.6; }
+  .notes .badge {
+    display:inline-block; background:#1565C0; color:#fff; font-size:10px;
+    border-radius:4px; padding:1px 6px; margin-right:6px; vertical-align:1px;
+  }
+</style>
+</head>
+<body>
+  <h1>法条通 · 重构方案预览</h1>
+  <div class="sub">对齐「法律法规速查」核心体验，保持你自己的差异化风格（浅色 M3 · 深蓝主色）</div>
+
+  <div class="stage">
+    <!-- 手机：阅读页（重构后） -->
+    <div>
+      <div class="phone"><div class="screen" id="screen1">
+        <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="topbar">
+          <span class="ic">‹</span>
+          <span class="title">宪法</span>
+          <span class="ic" title="本页搜索" onclick="toggleSearch()">🔍</span>
+          <span class="ic" title="历史版本" onclick="showTimeline()">🕘</span>
+          <span class="ic">☰</span>
+        </div>
+
+        <!-- 本页搜索（点击🔍展开） -->
+        <div class="page-search" id="pageSearch">
+          <input id="searchInput" placeholder="本页搜索：输入条文号（如 第一条）或关键词" onkeydown="if(event.key==='Enter')doPageSearch()" />
+          <div class="hint">输入条文号/关键词，跳转到对应条文</div>
+        </div>
+
+        <!-- 元信息卡 -->
+        <div class="meta-card">
+          <div class="row"><span class="k">发布机关</span><span class="v">全国人民代表大会</span></div>
+          <div class="row"><span class="k">发布日期</span><span class="v">2018年3月11日</span></div>
+          <div class="row"><span class="k">实施日期</span><span class="v">2018年3月11日</span></div>
+          <div class="row"><span class="k">当前效力</span><span class="v effective">有效<span class="tag">现行</span></span></div>
+        </div>
+
+        <!-- 历史版本入口按钮 -->
+        <div class="version-btn" onclick="showTimeline()">
+          <span>📜 历史版本 · 共 6 个</span>
+          <span class="arr">›</span>
+        </div>
+
+        <!-- 正文视图 -->
+        <div id="contentView">
+          <div class="article-title" id="art-1">序言</div>
+          <div class="article-text">中国是世界上历史最悠久的国家之一。中国各族人民共同创造了光辉灿烂的文化，具有光荣的革命传统。</div>
+          <div class="article-title" id="art-2">第一条</div>
+          <div class="article-text">中华人民共和国是工人阶级领导的、以工农联盟为基础的人民民主专政的社会主义国家。社会主义制度是中华人民共和国的根本制度。中国共产党领导是中国特色社会主义最本质的特征。</div>
+          <div class="article-title" id="art-3">第二条</div>
+          <div class="article-text">中华人民共和国的一切权力属于人民。人民行使国家权力的机关是全国人民代表大会和地方各级人民代表大会。</div>
+        </div>
+
+        <!-- 时间线视图 -->
+        <div class="timeline-view" id="timelineView">
+          <div class="timeline-head">历史版本 · 共 6 个（点击版本进入阅读）</div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-card"><div class="y">1988</div><div class="n">宪法修正案（1988年）</div></div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-card"><div class="y">1993</div><div class="n">宪法修正案（1993年）</div></div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-card"><div class="y">1999</div><div class="n">宪法修正案（1999年）</div></div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-card"><div class="y">2004</div><div class="n">宪法修正案（2004年）</div></div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-card"><div class="y">2018</div><div class="n">宪法修正案（2018年）</div></div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-left"><div class="tl-dot main"></div><div class="tl-line" style="visibility:hidden"></div></div>
+            <div class="tl-card current" onclick="showContent()"><div class="y">现行</div><div class="n">宪法（现行版本）✓ 返回正文</div></div>
+          </div>
+        </div>
+
+        <div class="bottomnav">
+          <div class="item on"><span class="ic">🏠</span>首页</div>
+          <div class="item"><span class="ic">🔍</span>检索</div>
+          <div class="item"><span class="ic">⭐</span>收藏</div>
+          <div class="item"><span class="ic">👤</span>我的</div>
+        </div>
+      </div></div>
+      <div class="phone-label">阅读页 · 重构后（点 🔍 试本页搜索，点 🕘 或版本按钮看时间线）</div>
+    </div>
+
+    <!-- 说明面板 -->
+    <div class="notes">
+      <div class="card">
+        <h3>本次重构点（对齐参考 App 核心体验）</h3>
+        <ul>
+          <li><span class="badge">新增</span>阅读页顶部<b>元信息卡</b>：发布机关 / 发布日期 / 实施日期 / 当前效力（✓有效）</li>
+          <li><span class="badge">新增</span><b>本页搜索</b>：顶栏 🔍 展开输入框，输入条文号或关键词直接跳转定位</li>
+          <li><span class="badge">新增</span><b>历史版本入口</b>：顶栏 🕘 + 正文上方按钮，进入版本时间线（已有 VersionsScreen 接入）</li>
+          <li><span class="badge">保留</span>首页分类列表 → 二级时间排序列表 → 阅读页的既有导航</li>
+          <li><span class="badge">保留</span>浅色 M3 风格 + 深蓝主色（差异化，不抄深色金色外观）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>交互说明</h3>
+        <ul>
+          <li>🔍 点击展开/收起本页搜索框</li>
+          <li>🕘 或「历史版本 · 共 6 个」按钮 → 切换为时间线视图</li>
+          <li>时间线里点「现行版本」→ 返回正文视图</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSearch() {
+      var s = document.getElementById('pageSearch');
+      s.style.display = s.style.display === 'none' ? 'block' : 'none';
+      if (s.style.display === 'block') document.getElementById('searchInput').focus();
+    }
+    function showTimeline() {
+      document.getElementById('contentView').style.display = 'none';
+      document.getElementById('timelineView').style.display = 'block';
+    }
+    function showContent() {
+      document.getElementById('contentView').style.display = 'block';
+      document.getElementById('timelineView').style.display = 'none';
+    }
+    function doPageSearch() {
+      var kw = document.getElementById('searchInput').value.trim();
+      if (!kw) return;
+      // 模拟定位：匹配“第X条”
+      var m = kw.match(/第.+条/);
+      if (m) {
+        var art = document.getElementById('art-' + (m[0] === '第一条' ? 2 : 3));
+        if (art) art.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      document.getElementById('searchInput').blur();
+    }
+  </script>
+</body>
+</html>

@@ -94,19 +94,19 @@ fun levelOrder(level: String): Int = LEVEL_ORDER[level] ?: Int.MAX_VALUE
 fun articleOrdinal(article: String): Long {
     val arabic = Regex("""第\s*(\d+)\s*条""").find(article)
     if (arabic != null) return arabic.groupValues[1].toLongOrNull() ?: Long.MAX_VALUE
-    val cn = Regex("""第\s*([零一二两三四五六七八九十百千]+)\s*条""").find(article)
+    val cn = Regex("""第\s*([零〇一二两三四五六七八九十百千]+)\s*条""").find(article)
     if (cn != null) return cnToLong(cn.groupValues[1])
     return Long.MAX_VALUE
 }
 
 /** 中文数字（支持 0~9999 量级）转 Long。 */
 private fun cnToLong(s: String): Long {
-    if (s == "零") return 0
+    if (s == "零" || s == "〇") return 0
     var section = 0L
     var number = 0L
     for (ch in s) {
         when (ch) {
-            '零' -> {}
+            '零', '〇' -> {}
             '一' -> number = 1
             '二', '两' -> number = 2
             '三' -> number = 3

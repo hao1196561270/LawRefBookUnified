@@ -7,29 +7,35 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -47,11 +53,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.lawrefbook.unified.data.model.CategoryEntity
 import com.lawrefbook.unified.data.model.SearchResult
@@ -179,7 +187,8 @@ fun SearchScreen(nav: NavHostController) {
                         mode = m
                         if (keyword.isNotBlank() || filterCount > 0) runSearch()
                     },
-                    label = { Text(label) }
+                    shape = RoundedCornerShape(12.dp),
+                    label = { Text(label, style = MaterialTheme.typography.bodyMedium) }
                 )
             }
             TextButton(onClick = { showFilter = true }) {
@@ -188,23 +197,29 @@ fun SearchScreen(nav: NavHostController) {
             }
         }
 
-        // 已激活筛选条件摘要（点击可清除）
+        // 已激活筛选条件摘要（小彩色标签）
         if (filterCount > 0) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 categoryId?.let { cid ->
                     val name = categories.firstOrNull { it.id == cid }?.name ?: "分类"
-                    ActiveChip("分类：$name") { categoryId = null; runSearch() }
+                    FilterBadge(label = name, containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer) { categoryId = null; runSearch() }
                 }
-                level?.let { ActiveChip("层级：$it") { level = null; runSearch() } }
-                fromYear.takeIf { it.isNotBlank() }?.let {
-                    ActiveChip("起：$it") { fromYear = ""; runSearch() }
+                level?.let {
+                    FilterBadge(label = it, containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer) { level = null; runSearch() }
                 }
-                toYear.takeIf { it.isNotBlank() }?.let {
-                    ActiveChip("止：$it") { toYear = ""; runSearch() }
+                fromYear.takeIf { it.isNotBlank() }?.let { y ->
+                    FilterBadge(label = "起 $y", containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { fromYear = ""; runSearch() }
+                }
+                toYear.takeIf { it.isNotBlank() }?.let { y ->
+                    FilterBadge(label = "止 $y", containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { toYear = ""; runSearch() }
                 }
             }
         }
@@ -339,18 +354,22 @@ fun SearchScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun ActiveChip(text: String, onClick: () -> Unit) {
+private fun FilterBadge(
+    label: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit
+) {
     Box(
-        Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
+        Modifier.clip(RoundedCornerShape(6.dp))
+            .background(containerColor)
             .clickable(onClick = onClick)
-            .defaultMinSize(minHeight = 36.dp)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text, color = MaterialTheme.colorScheme.onTertiaryContainer, style = MaterialTheme.typography.labelMedium)
-            Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.width(14.dp))
+            Text(label, color = contentColor, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            Icon(Icons.Filled.Close, null, tint = contentColor,
+                modifier = Modifier.size(12.dp))
         }
     }
 }
@@ -363,37 +382,86 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun ResultRow(r: SearchResult, kw: String, onClick: () -> Unit) {
-    val crumb = r.breadcrumb.joinToString(" / ")
-    val meta = listOfNotNull(r.level.takeIf { it.isNotBlank() }, r.publish.takeIf { it.isNotBlank() })
+    val crumb = r.breadcrumb.joinToString(" › ")
+    val badgeText = listOfNotNull(r.level.takeIf { it.isNotBlank() }, r.publish.takeIf { it.isNotBlank() })
         .joinToString(" · ")
-    ListItem(
-        headlineContent = {
-            Text(
-                "${r.lawName}${if (r.article.isNotBlank()) " · ${r.article}" else ""}",
-                style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Column {
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Title row: law name + article + badge on right
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "${r.lawName}${if (r.article.isNotBlank()) " · ${r.article}" else ""}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (badgeText.isNotBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                badgeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // Breadcrumb
                 if (crumb.isNotBlank()) {
-                    Text(crumb, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        crumb,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
-                if (meta.isNotBlank()) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                HighlightText(r.content, kw)
+
+                // Content with keyword highlighting
+                HighlightText(r.content, kw, modifier = Modifier.padding(top = 4.dp))
             }
-        },
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-    )
-    HorizontalDivider()
+
+            // Subtle arrow on the right
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically)
+            )
+        }
+    }
 }
 
 /** 在内容中以高亮背景标出命中关键词 */
 @Composable
-private fun HighlightText(text: String, kw: String) {
+private fun HighlightText(text: String, kw: String, modifier: Modifier = Modifier) {
     if (kw.isBlank() || !text.contains(kw)) {
-        Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = modifier)
         return
     }
     val annotated = buildAnnotatedString {
@@ -412,5 +480,5 @@ private fun HighlightText(text: String, kw: String) {
         }
         append(text.substring(start))
     }
-    Text(annotated, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+    Text(annotated, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }

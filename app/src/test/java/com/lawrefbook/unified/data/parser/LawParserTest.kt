@@ -2,6 +2,7 @@ package com.lawrefbook.unified.data.parser
 
 import com.lawrefbook.unified.data.model.flatten
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -96,5 +97,53 @@ class LawParserTest {
         assertEquals(1, tree.groups.size)
         assertEquals(3, tree.groups[0].level)
         assertEquals("三级标题", tree.groups[0].title)
+    }
+
+    @Test
+    fun `html comment markers are stripped from content`() {
+        // 数据源用 <!-- INFO END --> 标记元数据区结束、<!-- FORCE BREAK --> 强制分段，
+        // 两者都不应泄漏到条文正文
+        val lines = listOf(
+            "---",
+            "title: 测试法",
+            "---",
+            "<!-- INFO END -->",
+            "第一条 内容A",
+            "<!-- FORCE BREAK -->",
+            "第二条 内容B"
+        )
+        val flat = LawParser.parse(lines).flatten()
+        assertEquals(2, flat.size)
+        assertEquals("第一条", flat[0].article)
+        assertEquals("内容A", flat[0].content)
+        assertEquals("第二条", flat[1].article)
+        assertEquals("内容B", flat[1].content)
+        assertTrue(flat.none { "<!--" in it.content })
+    }
+
+    @Test
+    fun `inline html comment in heading is stripped`() {
+        // 模板中的行内注释（# 标题 <!-- 备注 -->）应被剥离，仅保留标题文字
+        val lines = listOf(
+            "# 第一章 总则 <!-- 说明 -->",
+            "第一条 内容"
+        )
+        val tree = LawParser.parse(lines)
+        assertEquals("第一章 总则", tree.groups[0].title)
+    }
+
+    @Test
+    fun `comment line between article paragraphs does not merge them`() {
+        // 注释行不应产生空内容条目，也不应把前后段落错误合并
+        val lines = listOf(
+            "第一条 甲",
+            "<!-- FORCE BREAK -->",
+            "乙",
+            "第二条 丙"
+        )
+        val flat = LawParser.parse(lines).flatten()
+        assertEquals(2, flat.size)
+        assertEquals("甲\n乙", flat[0].content)
+        assertEquals("丙", flat[1].content)
     }
 }
